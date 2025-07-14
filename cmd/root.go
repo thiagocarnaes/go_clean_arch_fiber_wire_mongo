@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "user-management",
+	Use:   "initApiServer",
 	Short: "User Management API",
 	Run: func(cmd *cobra.Command, args []string) {
 		//cfg, err := config.LoadConfig()
@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 		//	log.Fatalf("Failed to connect to MongoDB: %v", err)
 		//}
 
-		server, err := main.InitializeServer()
+		server, err := InitializeServer()
 		if err != nil {
 			log.Fatalf("Failed to initialize server: %v", err)
 		}

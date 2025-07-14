@@ -5,14 +5,17 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"user-management/internal/domain/entities"
+	"user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
 )
+
+var _ repositories.IUserRepository = (*UserRepository)(nil)
 
 type UserRepository struct {
 	collection *mongo.Collection
 }
 
-func NewUserRepository(db *database.MongoDB) *UserRepository {
+func NewUserRepository(db *database.MongoDB) repositories.IUserRepository {
 	return &UserRepository{collection: db.DB.Collection("users")}
 }
 

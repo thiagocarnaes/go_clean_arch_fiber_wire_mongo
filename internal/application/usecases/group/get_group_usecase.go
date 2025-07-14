@@ -8,10 +8,10 @@ import (
 )
 
 type GetGroupUseCase struct {
-	repo repositories.GroupRepository
+	repo repositories.IGroupRepository
 }
 
-func NewGetGroupUseCase(repo repositories.GroupRepository) *GetGroupUseCase {
+func NewGetGroupUseCase(repo repositories.IGroupRepository) *GetGroupUseCase {
 	return &GetGroupUseCase{repo: repo}
 }
 

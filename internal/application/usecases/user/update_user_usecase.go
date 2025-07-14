@@ -8,10 +8,10 @@ import (
 )
 
 type UpdateUserUseCase struct {
-	repo repositories.UserRepository
+	repo repositories.IUserRepository
 }
 
-func NewUpdateUserUseCase(repo repositories.UserRepository) *UpdateUserUseCase {
+func NewUpdateUserUseCase(repo repositories.IUserRepository) *UpdateUserUseCase {
 	return &UpdateUserUseCase{repo: repo}
 }
 

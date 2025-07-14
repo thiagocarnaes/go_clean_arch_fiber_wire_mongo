@@ -8,10 +8,10 @@ import (
 )
 
 type CreateUserUseCase struct {
-	repo repositories.UserRepository
+	repo repositories.IUserRepository
 }
 
-func NewCreateUserUseCase(repo repositories.UserRepository) *CreateUserUseCase {
+func NewCreateUserUseCase(repo repositories.IUserRepository) *CreateUserUseCase {
 	return &CreateUserUseCase{repo: repo}
 }
 

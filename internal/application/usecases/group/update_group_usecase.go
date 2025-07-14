@@ -8,10 +8,10 @@ import (
 )
 
 type UpdateGroupUseCase struct {
-	repo repositories.GroupRepository
+	repo repositories.IGroupRepository
 }
 
-func NewUpdateGroupUseCase(repo repositories.GroupRepository) *UpdateGroupUseCase {
+func NewUpdateGroupUseCase(repo repositories.IGroupRepository) *UpdateGroupUseCase {
 	return &UpdateGroupUseCase{repo: repo}
 }
 

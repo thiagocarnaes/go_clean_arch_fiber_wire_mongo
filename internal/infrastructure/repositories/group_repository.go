@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"user-management/internal/domain/entities"
+	"user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
 )
 
@@ -12,7 +13,7 @@ type GroupRepository struct {
 	collection *mongo.Collection
 }
 
-func NewGroupRepository(db *database.MongoDB) *GroupRepository {
+func NewGroupRepository(db *database.MongoDB) repositories.IGroupRepository {
 	return &GroupRepository{collection: db.DB.Collection("groups")}
 }
 

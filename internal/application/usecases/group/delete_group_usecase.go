@@ -6,10 +6,10 @@ import (
 )
 
 type DeleteGroupUseCase struct {
-	repo repositories.GroupRepository
+	repo repositories.IGroupRepository
 }
 
-func NewDeleteGroupUseCase(repo repositories.GroupRepository) *DeleteGroupUseCase {
+func NewDeleteGroupUseCase(repo repositories.IGroupRepository) *DeleteGroupUseCase {
 	return &DeleteGroupUseCase{repo: repo}
 }
 

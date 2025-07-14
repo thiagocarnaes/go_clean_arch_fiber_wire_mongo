@@ -6,10 +6,10 @@ import (
 )
 
 type RemoveUserFromGroupUseCase struct {
-	groupRepo repositories.GroupRepository
+	groupRepo repositories.IGroupRepository
 }
 
-func NewRemoveUserFromGroupUseCase(groupRepo repositories.GroupRepository) *RemoveUserFromGroupUseCase {
+func NewRemoveUserFromGroupUseCase(groupRepo repositories.IGroupRepository) *RemoveUserFromGroupUseCase {
 	return &RemoveUserFromGroupUseCase{groupRepo: groupRepo}
 }
 

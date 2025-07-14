@@ -8,10 +8,10 @@ import (
 )
 
 type ListGroupsUseCase struct {
-	repo repositories.GroupRepository
+	repo repositories.IGroupRepository
 }
 
-func NewListGroupsUseCase(repo repositories.GroupRepository) *ListGroupsUseCase {
+func NewListGroupsUseCase(repo repositories.IGroupRepository) *ListGroupsUseCase {
 	return &ListGroupsUseCase{repo: repo}
 }
 

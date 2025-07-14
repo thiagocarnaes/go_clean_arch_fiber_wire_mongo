@@ -3,6 +3,8 @@ package web
 import (
 	"github.com/gofiber/fiber/v2"
 	"user-management/internal/config"
+	"user-management/internal/infrastructure/web/handlers"
+	"user-management/internal/infrastructure/web/routes"
 )
 
 type Server struct {
@@ -10,11 +12,10 @@ type Server struct {
 	cfg *config.Config
 }
 
-func NewServer(cfg *config.Config) *Server {
-	//, userHandler *handlers.UserHandler, groupHandler *handlers.GroupHandler
+func NewServer(cfg *config.Config, userHandler *handlers.UserHandler, groupHandler *handlers.GroupHandler) *Server {
 
 	app := fiber.New()
-	//routes.SetupRoutes(app, userHandler, groupHandler)
+	routes.SetupRoutes(app, userHandler, groupHandler)
 	return &Server{app: app, cfg: cfg}
 }
 

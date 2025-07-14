@@ -2,14 +2,14 @@
 //go:build wireinject
 // +build wireinject
 
-package main
+package cmd
 
 import (
 	"github.com/google/wire"
 	"user-management/internal/application/usecases/group"
 	"user-management/internal/application/usecases/user"
 	"user-management/internal/config"
-	drepos "user-management/internal/domain/interfaces/repositories"
+	//drepos "user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
 	irepos "user-management/internal/infrastructure/repositories"
 	"user-management/internal/infrastructure/web"
@@ -36,9 +36,9 @@ func InitializeServer() (*web.Server, error) {
 		group.NewRemoveUserFromGroupUseCase,
 		handlers.NewUserHandler,
 		handlers.NewGroupHandler,
+		//drepos.IUserRepository,
+		//drepos.IGroupRepository,
 		web.NewServer,
-		wire.Bind(new(drepos.IUserRepository), new(irepos.UserRepository)),
-		wire.Bind(new(drepos.IGroupRepository), new(irepos.GroupRepository)),
 	)
 	return &web.Server{}, nil
 }
