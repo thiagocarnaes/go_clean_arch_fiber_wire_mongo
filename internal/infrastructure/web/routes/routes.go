@@ -2,10 +2,20 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"log"
 	"user-management/internal/infrastructure/web/handlers"
 )
 
 func SetupRoutes(app *fiber.App, userHandler *handlers.UserHandler, groupHandler *handlers.GroupHandler) {
+
+	app.Use(logger.New(logger.Config{
+		Format:     `{"timestamp":"${time}","status":${status},"method":"${method}","path":"${path}","latency":"${latency}"}` + "\n",
+		TimeFormat: "2006-01-02T15:04:05.999Z", // Formato ISO 8601
+		TimeZone:   "UTC",
+		Output:     log.Writer(), // Enviar logs para o Logrus
+	}))
+
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 

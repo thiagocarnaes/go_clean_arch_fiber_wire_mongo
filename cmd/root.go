@@ -10,15 +10,6 @@ var rootCmd = &cobra.Command{
 	Use:   "initApiServer",
 	Short: "User Management API",
 	Run: func(cmd *cobra.Command, args []string) {
-		//cfg, err := config.LoadConfig()
-		//if err != nil {
-		//	log.Fatalf("Failed to load config: %v", err)
-		//}
-		//
-		//db, err := database.NewMongoDB(cfg)
-		//if err != nil {
-		//	log.Fatalf("Failed to connect to MongoDB: %v", err)
-		//}
 
 		server, err := InitializeServer()
 		if err != nil {

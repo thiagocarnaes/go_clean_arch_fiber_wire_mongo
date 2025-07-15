@@ -9,8 +9,8 @@ import (
 	"user-management/internal/application/usecases/group"
 	"user-management/internal/application/usecases/user"
 	"user-management/internal/config"
-	//drepos "user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
+	"user-management/internal/infrastructure/logger"
 	irepos "user-management/internal/infrastructure/repositories"
 	"user-management/internal/infrastructure/web"
 	"user-management/internal/infrastructure/web/handlers"
@@ -18,6 +18,7 @@ import (
 
 func InitializeServer() (*web.Server, error) {
 	wire.Build(
+		logger.NewLogger,
 		config.NewConfig,
 		database.NewMongoDB,
 		irepos.NewUserRepository,
@@ -36,8 +37,6 @@ func InitializeServer() (*web.Server, error) {
 		group.NewRemoveUserFromGroupUseCase,
 		handlers.NewUserHandler,
 		handlers.NewGroupHandler,
-		//drepos.IUserRepository,
-		//drepos.IGroupRepository,
 		web.NewServer,
 	)
 	return &web.Server{}, nil

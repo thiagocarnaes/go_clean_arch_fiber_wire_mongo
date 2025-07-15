@@ -9,8 +9,6 @@ import (
 	"user-management/internal/infrastructure/database"
 )
 
-var _ repositories.IUserRepository = (*UserRepository)(nil)
-
 type UserRepository struct {
 	collection *mongo.Collection
 }
