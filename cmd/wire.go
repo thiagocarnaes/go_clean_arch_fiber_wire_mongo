@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"github.com/google/wire"
 	"user-management/internal/application/usecases/group"
 	"user-management/internal/application/usecases/user"
 	"user-management/internal/config"
@@ -13,7 +12,9 @@ import (
 	"user-management/internal/infrastructure/logger"
 	irepos "user-management/internal/infrastructure/repositories"
 	"user-management/internal/infrastructure/web"
-	"user-management/internal/infrastructure/web/handlers"
+	"user-management/internal/infrastructure/web/controllers"
+
+	"github.com/google/wire"
 )
 
 func InitializeServer() (*web.Server, error) {
@@ -35,8 +36,8 @@ func InitializeServer() (*web.Server, error) {
 		group.NewListGroupsUseCase,
 		group.NewAddUserToGroupUseCase,
 		group.NewRemoveUserFromGroupUseCase,
-		handlers.NewUserHandler,
-		handlers.NewGroupHandler,
+		controllers.NewUserController,
+		controllers.NewGroupController,
 		web.NewServer,
 	)
 	return &web.Server{}, nil

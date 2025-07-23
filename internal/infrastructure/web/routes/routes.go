@@ -1,13 +1,14 @@
 package routes
 
 import (
+	"log"
+	"user-management/internal/infrastructure/web/controllers"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"log"
-	"user-management/internal/infrastructure/web/handlers"
 )
 
-func SetupRoutes(app *fiber.App, userHandler *handlers.UserHandler, groupHandler *handlers.GroupHandler) {
+func SetupRoutes(app *fiber.App, UserController *controllers.UserController, GroupController *controllers.GroupController) {
 
 	app.Use(logger.New(logger.Config{
 		Format:     `{"timestamp":"${time}","status":${status},"method":"${method}","path":"${path}","latency":"${latency}"}` + "\n",
@@ -21,19 +22,19 @@ func SetupRoutes(app *fiber.App, userHandler *handlers.UserHandler, groupHandler
 
 	// User routes
 	users := v1.Group("/users")
-	users.Post("/", userHandler.Create)
-	users.Get("/:id", userHandler.Get)
-	users.Put("/:id", userHandler.Update)
-	users.Delete("/:id", userHandler.Delete)
-	users.Get("/", userHandler.List)
+	users.Post("/", UserController.Create)
+	users.Get("/:id", UserController.Get)
+	users.Put("/:id", UserController.Update)
+	users.Delete("/:id", UserController.Delete)
+	users.Get("/", UserController.List)
 
 	// Group routes
 	groups := v1.Group("/groups")
-	groups.Post("/", groupHandler.Create)
-	groups.Get("/:id", groupHandler.Get)
-	groups.Put("/:id", groupHandler.Update)
-	groups.Delete("/:id", groupHandler.Delete)
-	groups.Get("/", groupHandler.List)
-	groups.Post("/:groupId/members/:userId", groupHandler.AddUser)
-	groups.Delete("/:groupId/members/:userId", groupHandler.RemoveUser)
+	groups.Post("/", GroupController.Create)
+	groups.Get("/:id", GroupController.Get)
+	groups.Put("/:id", GroupController.Update)
+	groups.Delete("/:id", GroupController.Delete)
+	groups.Get("/", GroupController.List)
+	groups.Post("/:groupId/members/:userId", GroupController.AddUser)
+	groups.Delete("/:groupId/members/:userId", GroupController.RemoveUser)
 }

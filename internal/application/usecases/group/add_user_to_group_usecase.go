@@ -15,9 +15,13 @@ func NewAddUserToGroupUseCase(groupRepo repositories.IGroupRepository, userRepo 
 }
 
 func (uc *AddUserToGroupUseCase) Execute(ctx context.Context, groupID, userID string) error {
-	_, err := uc.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return err
+	_, errGroup := uc.groupRepo.GetByID(ctx, groupID)
+	if errGroup != nil {
+		return errGroup
+	}
+	_, errUser := uc.userRepo.GetByID(ctx, userID)
+	if errUser != nil {
+		return errUser
 	}
 	return uc.groupRepo.AddUserToGroup(ctx, groupID, userID)
 }

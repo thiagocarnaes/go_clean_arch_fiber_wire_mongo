@@ -1,12 +1,13 @@
-package handlers
+package controllers
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"user-management/internal/application/dto"
 	"user-management/internal/application/usecases/user"
+
+	"github.com/gofiber/fiber/v2"
 )
 
-type UserHandler struct {
+type UserController struct {
 	createUserUseCase *user.CreateUserUseCase
 	getUserUseCase    *user.GetUserUseCase
 	updateUserUseCase *user.UpdateUserUseCase
@@ -14,8 +15,8 @@ type UserHandler struct {
 	listUsersUseCase  *user.ListUsersUseCase
 }
 
-func NewUserHandler(createUser *user.CreateUserUseCase, getUser *user.GetUserUseCase, updateUser *user.UpdateUserUseCase, deleteUser *user.DeleteUserUseCase, listUsers *user.ListUsersUseCase) *UserHandler {
-	return &UserHandler{
+func NewUserController(createUser *user.CreateUserUseCase, getUser *user.GetUserUseCase, updateUser *user.UpdateUserUseCase, deleteUser *user.DeleteUserUseCase, listUsers *user.ListUsersUseCase) *UserController {
+	return &UserController{
 		createUserUseCase: createUser,
 		getUserUseCase:    getUser,
 		updateUserUseCase: updateUser,
@@ -24,7 +25,7 @@ func NewUserHandler(createUser *user.CreateUserUseCase, getUser *user.GetUserUse
 	}
 }
 
-func (h *UserHandler) Create(c *fiber.Ctx) error {
+func (h *UserController) Create(c *fiber.Ctx) error {
 	var userDTO dto.UserDTO
 	if err := c.BodyParser(&userDTO); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
@@ -35,7 +36,7 @@ func (h *UserHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(userDTO)
 }
 
-func (h *UserHandler) Get(c *fiber.Ctx) error {
+func (h *UserController) Get(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userDTO, err := h.getUserUseCase.Execute(c.Context(), id)
 	if err != nil {
@@ -44,7 +45,7 @@ func (h *UserHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(userDTO)
 }
 
-func (h *UserHandler) Update(c *fiber.Ctx) error {
+func (h *UserController) Update(c *fiber.Ctx) error {
 	var userDTO dto.UserDTO
 	if err := c.BodyParser(&userDTO); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
@@ -55,7 +56,7 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(userDTO)
 }
 
-func (h *UserHandler) Delete(c *fiber.Ctx) error {
+func (h *UserController) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := h.deleteUserUseCase.Execute(c.Context(), id); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -63,7 +64,7 @@ func (h *UserHandler) Delete(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (h *UserHandler) List(c *fiber.Ctx) error {
+func (h *UserController) List(c *fiber.Ctx) error {
 	users, err := h.listUsersUseCase.Execute(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})

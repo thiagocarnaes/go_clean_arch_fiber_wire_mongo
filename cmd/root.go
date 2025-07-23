@@ -18,6 +18,7 @@ var rootCmd = &cobra.Command{
 		if err := server.Start(); err != nil {
 			log.Fatalf("Failed to start server: %v", err)
 		}
+
 	},
 }
 

@@ -2,11 +2,12 @@ package repositories
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"user-management/internal/domain/entities"
 	"user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type GroupRepository struct {

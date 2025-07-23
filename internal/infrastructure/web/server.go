@@ -2,16 +2,17 @@ package web
 
 import (
 	"context"
-	"github.com/gofiber/fiber/v2"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 	"user-management/internal/config"
 	"user-management/internal/infrastructure/database"
-	"user-management/internal/infrastructure/web/handlers"
+	"user-management/internal/infrastructure/web/controllers"
 	"user-management/internal/infrastructure/web/routes"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
@@ -22,13 +23,13 @@ type Server struct {
 }
 
 func NewServer(cfg *config.Config,
-	userHandler *handlers.UserHandler,
-	groupHandler *handlers.GroupHandler,
+	UserController *controllers.UserController,
+	GroupController *controllers.GroupController,
 	log *logrus.Logger,
 	mongoDB *database.MongoDB) *Server {
 
 	app := fiber.New()
-	routes.SetupRoutes(app, userHandler, groupHandler)
+	routes.SetupRoutes(app, UserController, GroupController)
 	return &Server{app: app, cfg: cfg, log: log, mongoDB: mongoDB}
 }
 
@@ -102,4 +103,8 @@ func (s *Server) Start() error {
 		"ddtags":   "env:dev,app:fiber",
 	}).Info("Server gracefully shutdown")
 	return nil
+}
+
+func (s *Server) ServerData() *Server {
+	return s
 }
