@@ -15,7 +15,17 @@ func NewUpdateUserUseCase(repo repositories.IUserRepository) *UpdateUserUseCase 
 	return &UpdateUserUseCase{repo: repo}
 }
 
-func (uc *UpdateUserUseCase) Execute(ctx context.Context, userDTO *dto.UserDTO) error {
-	user := mappers.ToUserEntity(userDTO)
-	return uc.repo.Update(ctx, user)
+func (uc *UpdateUserUseCase) Execute(ctx context.Context, userID string, userDTO *dto.CreateUserRequestDTO) (*dto.UserResponseDTO, error) {
+	existingUser, err := uc.repo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	user := mappers.ToUserEntityFromRequest(userDTO)
+	user.ID = existingUser.ID
+	errUpdate := uc.repo.Update(ctx, user)
+	if errUpdate != nil {
+		return nil, errUpdate
+	}
+	return mappers.ToUserResponseDTO(user), nil
 }

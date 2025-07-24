@@ -3,11 +3,13 @@ package controllers
 import (
 	"user-management/internal/application/dto"
 	"user-management/internal/application/usecases/group"
+	"user-management/internal/infrastructure/web/validators"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type GroupController struct {
+	validator                  *validators.InputValidator
 	createGroupUseCase         *group.CreateGroupUseCase
 	getGroupUseCase            *group.GetGroupUseCase
 	updateGroupUseCase         *group.UpdateGroupUseCase
@@ -19,6 +21,7 @@ type GroupController struct {
 
 func NewGroupController(createGroup *group.CreateGroupUseCase, getGroup *group.GetGroupUseCase, updateGroup *group.UpdateGroupUseCase, deleteGroup *group.DeleteGroupUseCase, listGroups *group.ListGroupsUseCase, addUserToGroup *group.AddUserToGroupUseCase, removeUserFromGroup *group.RemoveUserFromGroupUseCase) *GroupController {
 	return &GroupController{
+		validator:                  validators.NewInputValidator(),
 		createGroupUseCase:         createGroup,
 		getGroupUseCase:            getGroup,
 		updateGroupUseCase:         updateGroup,
@@ -30,11 +33,17 @@ func NewGroupController(createGroup *group.CreateGroupUseCase, getGroup *group.G
 }
 
 func (h *GroupController) Create(c *fiber.Ctx) error {
-	var groupDTO dto.GroupDTO
-	if err := c.BodyParser(&groupDTO); err != nil {
+	var createGroupDTO dto.CreateGroupRequestDTO
+	
+	if err := h.validator.ParseAndValidate(c, &createGroupDTO); err != nil {
+		if validationErr, ok := err.(*validators.ValidationError); ok {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
-	if err := h.createGroupUseCase.Execute(c.Context(), &groupDTO); err != nil {
+
+	groupDTO, err := h.createGroupUseCase.Execute(c.Context(), &createGroupDTO)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.Status(fiber.StatusCreated).JSON(groupDTO)
@@ -50,14 +59,21 @@ func (h *GroupController) Get(c *fiber.Ctx) error {
 }
 
 func (h *GroupController) Update(c *fiber.Ctx) error {
-	var groupDTO dto.GroupDTO
-	if err := c.BodyParser(&groupDTO); err != nil {
+	var updateGroupDTO dto.CreateGroupRequestDTO
+	
+	if err := h.validator.ParseAndValidate(c, &updateGroupDTO); err != nil {
+		if validationErr, ok := err.(*validators.ValidationError); ok {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
-	if err := h.updateGroupUseCase.Execute(c.Context(), &groupDTO); err != nil {
+
+	groupID := c.Params("id")
+	responseDTO, err := h.updateGroupUseCase.Execute(c.Context(), groupID, &updateGroupDTO)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.JSON(groupDTO)
+	return c.JSON(responseDTO)
 }
 
 func (h *GroupController) Delete(c *fiber.Ctx) error {

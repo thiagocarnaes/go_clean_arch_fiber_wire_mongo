@@ -15,7 +15,11 @@ func NewCreateUserUseCase(repo repositories.IUserRepository) *CreateUserUseCase 
 	return &CreateUserUseCase{repo: repo}
 }
 
-func (uc *CreateUserUseCase) Execute(ctx context.Context, userDTO *dto.UserDTO) error {
-	user := mappers.ToUserEntity(userDTO)
-	return uc.repo.Create(ctx, user)
+func (uc *CreateUserUseCase) Execute(ctx context.Context, userDTO *dto.CreateUserRequestDTO) (*dto.UserResponseDTO, error) {
+	user := mappers.ToUserEntityFromRequest(userDTO)
+	err := uc.repo.Create(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return mappers.ToUserResponseDTO(user), nil
 }

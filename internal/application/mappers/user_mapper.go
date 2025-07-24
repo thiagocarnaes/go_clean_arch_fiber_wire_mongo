@@ -5,17 +5,16 @@ import (
 	"user-management/internal/domain/entities"
 )
 
-func ToUserDTO(user *entities.User) *dto.UserDTO {
-	return &dto.UserDTO{
-		ID:    user.ID,
+func ToUserResponseDTO(user *entities.User) *dto.UserResponseDTO {
+	return &dto.UserResponseDTO{
+		ID:    user.ID.Hex(),
 		Name:  user.Name,
 		Email: user.Email,
 	}
 }
 
-func ToUserEntity(dto *dto.UserDTO) *entities.User {
+func ToUserEntityFromRequest(dto *dto.CreateUserRequestDTO) *entities.User {
 	return &entities.User{
-		ID:    dto.ID,
 		Name:  dto.Name,
 		Email: dto.Email,
 	}

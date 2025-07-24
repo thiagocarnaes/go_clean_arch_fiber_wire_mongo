@@ -10,8 +10,7 @@ import (
 
 func (suite *IntegrationTestSuite) TestUserCRUD() {
 	// Test Create User
-	createUserDTO := dto.UserDTO{
-		ID:    "user1",
+	createUserDTO := dto.CreateUserRequestDTO{
 		Name:  "John Doe",
 		Email: "john@example.com",
 	}
@@ -19,35 +18,36 @@ func (suite *IntegrationTestSuite) TestUserCRUD() {
 	resp, body := suite.makeRequest("POST", "/api/v1/users/", createUserDTO)
 	assert.Equal(suite.T(), http.StatusCreated, resp.StatusCode)
 
-	var createdUser dto.UserDTO
+	var createdUser dto.UserResponseDTO
 	err := json.Unmarshal(body, &createdUser)
 	suite.NoError(err)
-	assert.Equal(suite.T(), createUserDTO.ID, createdUser.ID)
+	assert.NotEmpty(suite.T(), createdUser.ID)
 	assert.Equal(suite.T(), createUserDTO.Name, createdUser.Name)
 	assert.Equal(suite.T(), createUserDTO.Email, createdUser.Email)
 
+	userID := createdUser.ID
+
 	// Test Get User
-	resp, body = suite.makeRequest("GET", "/api/v1/users/user1", nil)
+	resp, body = suite.makeRequest("GET", "/api/v1/users/"+userID, nil)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var retrievedUser dto.UserDTO
+	var retrievedUser dto.UserResponseDTO
 	err = json.Unmarshal(body, &retrievedUser)
 	suite.NoError(err)
-	assert.Equal(suite.T(), createUserDTO.ID, retrievedUser.ID)
+	assert.Equal(suite.T(), createdUser.ID, retrievedUser.ID)
 	assert.Equal(suite.T(), createUserDTO.Name, retrievedUser.Name)
 	assert.Equal(suite.T(), createUserDTO.Email, retrievedUser.Email)
 
 	// Test Update User
-	updateUserDTO := dto.UserDTO{
-		ID:    "user1",
+	updateUserDTO := dto.CreateUserRequestDTO{
 		Name:  "John Updated",
 		Email: "john.updated@example.com",
 	}
 
-	resp, body = suite.makeRequest("PUT", "/api/v1/users/user1", updateUserDTO)
+	resp, body = suite.makeRequest("PUT", "/api/v1/users/"+userID, updateUserDTO)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var updatedUser dto.UserDTO
+	var updatedUser dto.UserResponseDTO
 	err = json.Unmarshal(body, &updatedUser)
 	suite.NoError(err)
 	assert.Equal(suite.T(), updateUserDTO.Name, updatedUser.Name)
@@ -57,18 +57,18 @@ func (suite *IntegrationTestSuite) TestUserCRUD() {
 	resp, body = suite.makeRequest("GET", "/api/v1/users/", nil)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var users []dto.UserDTO
+	var users []dto.UserResponseDTO
 	err = json.Unmarshal(body, &users)
 	suite.NoError(err)
 	assert.Len(suite.T(), users, 1)
 	assert.Equal(suite.T(), updateUserDTO.Name, users[0].Name)
 
 	// Test Delete User
-	resp, _ = suite.makeRequest("DELETE", "/api/v1/users/user1", nil)
+	resp, _ = suite.makeRequest("DELETE", "/api/v1/users/"+userID, nil)
 	assert.Equal(suite.T(), http.StatusNoContent, resp.StatusCode)
 
 	// Verify user is deleted
-	resp, _ = suite.makeRequest("GET", "/api/v1/users/user1", nil)
+	resp, _ = suite.makeRequest("GET", "/api/v1/users/"+userID, nil)
 	assert.Equal(suite.T(), http.StatusNotFound, resp.StatusCode)
 }
 
@@ -78,19 +78,24 @@ func (suite *IntegrationTestSuite) TestUserNotFound() {
 }
 
 func (suite *IntegrationTestSuite) TestCreateUserInvalidData() {
-	invalidUser := map[string]interface{}{
-		"invalid": "data",
-	}
+	// Test with invalid JSON
+	invalidJSON := "{"
+	resp, _ := suite.makeRequest("POST", "/api/v1/users/", invalidJSON)
+	assert.Equal(suite.T(), http.StatusBadRequest, resp.StatusCode)
 
-	resp, _ := suite.makeRequest("POST", "/api/v1/users/", invalidUser)
-	assert.Equal(suite.T(), http.StatusCreated, resp.StatusCode) // Still creates with empty fields
+	// Test with missing required fields
+	invalidUser := map[string]interface{}{
+		"invalid_field": "data",
+	}
+	resp2, _ := suite.makeRequest("POST", "/api/v1/users/", invalidUser)
+	assert.Equal(suite.T(), http.StatusBadRequest, resp2.StatusCode)
 }
 
 func (suite *IntegrationTestSuite) TestListUsersEmpty() {
 	resp, body := suite.makeRequest("GET", "/api/v1/users/", nil)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var users []dto.UserDTO
+	var users []dto.UserResponseDTO
 	err := json.Unmarshal(body, &users)
 	suite.NoError(err)
 	assert.Empty(suite.T(), users)
@@ -98,32 +103,38 @@ func (suite *IntegrationTestSuite) TestListUsersEmpty() {
 
 func (suite *IntegrationTestSuite) TestMultipleUsers() {
 	// Create multiple users
-	users := []dto.UserDTO{
-		{ID: "user1", Name: "User 1", Email: "user1@example.com"},
-		{ID: "user2", Name: "User 2", Email: "user2@example.com"},
-		{ID: "user3", Name: "User 3", Email: "user3@example.com"},
+	createRequests := []dto.CreateUserRequestDTO{
+		{Name: "User 1", Email: "user1@example.com"},
+		{Name: "User 2", Email: "user2@example.com"},
+		{Name: "User 3", Email: "user3@example.com"},
 	}
 
-	for _, user := range users {
-		resp, _ := suite.makeRequest("POST", "/api/v1/users/", user)
+	createdUsers := make([]dto.UserResponseDTO, 0, len(createRequests))
+	for _, req := range createRequests {
+		resp, body := suite.makeRequest("POST", "/api/v1/users/", req)
 		assert.Equal(suite.T(), http.StatusCreated, resp.StatusCode)
+
+		var createdUser dto.UserResponseDTO
+		err := json.Unmarshal(body, &createdUser)
+		suite.NoError(err)
+		createdUsers = append(createdUsers, createdUser)
 	}
 
 	// List all users
 	resp, body := suite.makeRequest("GET", "/api/v1/users/", nil)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var retrievedUsers []dto.UserDTO
+	var retrievedUsers []dto.UserResponseDTO
 	err := json.Unmarshal(body, &retrievedUsers)
 	suite.NoError(err)
 	assert.Len(suite.T(), retrievedUsers, 3)
 
 	// Verify each user exists
-	for _, user := range users {
+	for _, user := range createdUsers {
 		resp, body := suite.makeRequest("GET", "/api/v1/users/"+user.ID, nil)
 		assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-		var retrievedUser dto.UserDTO
+		var retrievedUser dto.UserResponseDTO
 		err := json.Unmarshal(body, &retrievedUser)
 		suite.NoError(err)
 		assert.Equal(suite.T(), user.ID, retrievedUser.ID)

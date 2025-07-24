@@ -23,9 +23,9 @@ func NewMongoDB(cfg *config.Config, log *logrus.Logger) (*MongoDB, error) {
 	client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"ddsource": "go",
-			"service":  "user-management",
-			"ddtags":   "env:dev,app:fiber",
+			"ddsource": cfg.DDSource,
+			"service":  cfg.DDService,
+			"ddtags":   cfg.DDTags,
 			"error":    err.Error(),
 		}).Error("Failed to connect to MongoDB")
 		return nil, err
@@ -34,18 +34,18 @@ func NewMongoDB(cfg *config.Config, log *logrus.Logger) (*MongoDB, error) {
 	err = client.Ping(ctx, nil)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"ddsource": "go",
-			"service":  "user-management",
-			"ddtags":   "env:dev,app:fiber",
+			"ddsource": cfg.DDSource,
+			"service":  cfg.DDService,
+			"ddtags":   cfg.DDTags,
 			"error":    err.Error(),
 		}).Error("MongoDB is not available")
 		return nil, err
 	}
 
 	log.WithFields(logrus.Fields{
-		"ddsource": "go",
-		"service":  "user-management",
-		"ddtags":   "env:dev,app:fiber",
+		"ddsource": cfg.DDSource,
+		"service":  cfg.DDService,
+		"ddtags":   cfg.DDTags,
 		"uri":      cfg.MongoURI,
 	}).Info("Successfully connected to MongoDB")
 

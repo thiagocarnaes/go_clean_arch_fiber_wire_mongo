@@ -38,35 +38,45 @@ Este diretório contém os testes de integração para a API de gerenciamento de
 
 ## Pré-requisitos
 
-### MongoDB
-Os testes requerem uma instância do MongoDB rodando. Você pode usar:
+### 🐳 Testcontainers (Recomendado)
+Os testes agora usam **Testcontainers** por padrão! Isso significa:
+- ✅ **Zero configuração**: MongoDB é gerenciado automaticamente
+- ✅ **Isolamento total**: Cada execução usa um container limpo
+- ✅ **CI/CD friendly**: Funciona perfeitamente em pipelines
+- ✅ **Sem conflitos**: Não precisa de MongoDB externo rodando
 
-1. **MongoDB local**:
-   ```bash
-   # Instalar e iniciar MongoDB localmente
-   # Ou usar Docker:
-   docker run --name mongo-test -p 27017:27017 -d mongo:7.0
-   ```
-
-2. **MongoDB via Docker** (recomendado):
-   ```bash
-   make mongo-start  # Inicia MongoDB via Docker
-   ```
-
-### Dependências Go
+**Requisitos apenas:**
 ```bash
+# Docker deve estar rodando
+docker version
+
+# Dependências Go (já incluídas)
 go mod download
 ```
+
+### MongoDB Externo (Opcional)
+Se preferir usar MongoDB externo:
+```bash
+# Desabilitar Testcontainers
+export USE_TEST_CONTAINER=false
+
+# Usar MongoDB local ou Docker
+docker run --name mongo-test -p 27017:27017 -d mongo:7.0
+# OU
+make mongo-start
+```
+
+📖 **Para mais detalhes sobre Testcontainers**: [TESTCONTAINERS.md](../TESTCONTAINERS.md)
 
 ## Executando os Testes
 
 ### Opção 1: Usando o Makefile (Recomendado)
 
 ```bash
-# Executar testes de integração (MongoDB deve estar rodando)
+# Executar testes de integração com Testcontainers (automático!)
 make test-integration
 
-# Executar testes com MongoDB via Docker (mais conveniente)
+# Executar testes com MongoDB via Docker (compatibilidade)
 make test-integration-docker
 
 # Executar todos os testes (unit + integration)
@@ -79,7 +89,11 @@ make test-coverage
 ### Opção 2: Comando Go Direto
 
 ```bash
-# MongoDB deve estar rodando em localhost:27017
+# Com Testcontainers (padrão) - MongoDB gerenciado automaticamente
+go test -v -race ./tests/...
+
+# Com MongoDB externo
+export USE_TEST_CONTAINER=false
 go test -v -race ./tests/...
 ```
 

@@ -40,16 +40,16 @@ func (s *Server) Start() error {
 	// Iniciar o servidor em uma goroutine
 	go func() {
 		s.log.WithFields(logrus.Fields{
-			"ddsource": "go",
-			"service":  "user-management",
-			"ddtags":   "env:dev,app:fiber",
+			"ddsource": s.cfg.DDSource,
+			"service":  s.cfg.DDService,
+			"ddtags":   s.cfg.DDTags,
 			"port":     s.cfg.Port,
 		}).Info("Starting server")
 		if err := s.app.Listen(s.cfg.Port); err != nil {
 			s.log.WithFields(logrus.Fields{
-				"ddsource": "go",
-				"service":  "user-management",
-				"ddtags":   "env:dev,app:fiber",
+				"ddsource": s.cfg.DDSource,
+				"service":  s.cfg.DDService,
+				"ddtags":   s.cfg.DDTags,
 				"error":    err.Error(),
 			}).Error("Failed to start server")
 		}
@@ -58,9 +58,9 @@ func (s *Server) Start() error {
 	// Aguardar sinal de shutdown
 	<-stop
 	s.log.WithFields(logrus.Fields{
-		"ddsource": "go",
-		"service":  "user-management",
-		"ddtags":   "env:dev,app:fiber",
+		"ddsource": s.cfg.DDSource,
+		"service":  s.cfg.DDService,
+		"ddtags":   s.cfg.DDTags,
 	}).Info("Shutdown signal received, initiating graceful shutdown")
 
 	// Criar contexto com timeout para shutdown
@@ -70,9 +70,9 @@ func (s *Server) Start() error {
 	// Fechar conexões do Fiber
 	if err := s.app.Shutdown(); err != nil {
 		s.log.WithFields(logrus.Fields{
-			"ddsource": "go",
-			"service":  "user-management",
-			"ddtags":   "env:dev,app:fiber",
+			"ddsource": s.cfg.DDSource,
+			"service":  s.cfg.DDService,
+			"ddtags":   s.cfg.DDTags,
 			"error":    err.Error(),
 		}).Error("Failed to shutdown Fiber server")
 		return err
@@ -81,16 +81,16 @@ func (s *Server) Start() error {
 	// Fechar conexão com MongoDB
 	if s.mongoDB == nil {
 		s.log.WithFields(logrus.Fields{
-			"ddsource": "go",
-			"service":  "user-management",
-			"ddtags":   "env:dev,app:fiber",
+			"ddsource": s.cfg.DDSource,
+			"service":  s.cfg.DDService,
+			"ddtags":   s.cfg.DDTags,
 		}).Warn("MongoDB client is nil, skipping disconnect")
 	} else {
 		if err := s.mongoDB.Client.Disconnect(ctx); err != nil {
 			s.log.WithFields(logrus.Fields{
-				"ddsource": "go",
-				"service":  "user-management",
-				"ddtags":   "env:dev,app:fiber",
+				"ddsource": s.cfg.DDSource,
+				"service":  s.cfg.DDService,
+				"ddtags":   s.cfg.DDTags,
 				"error":    err.Error(),
 			}).Error("Failed to disconnect MongoDB client")
 			return err
@@ -98,9 +98,9 @@ func (s *Server) Start() error {
 	}
 
 	s.log.WithFields(logrus.Fields{
-		"ddsource": "go",
-		"service":  "user-management",
-		"ddtags":   "env:dev,app:fiber",
+		"ddsource": s.cfg.DDSource,
+		"service":  s.cfg.DDService,
+		"ddtags":   s.cfg.DDTags,
 	}).Info("Server gracefully shutdown")
 	return nil
 }

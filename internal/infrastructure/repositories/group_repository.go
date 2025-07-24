@@ -19,13 +19,19 @@ func NewGroupRepository(db *database.MongoDB) repositories.IGroupRepository {
 }
 
 func (r *GroupRepository) Create(ctx context.Context, group *entities.Group) error {
+	group.ID = bson.NewObjectID()
 	_, err := r.collection.InsertOne(ctx, group)
 	return err
 }
 
 func (r *GroupRepository) GetByID(ctx context.Context, id string) (*entities.Group, error) {
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
 	var group entities.Group
-	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&group)
+	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&group)
 	if err != nil {
 		return nil, err
 	}
@@ -45,21 +51,36 @@ func (r *GroupRepository) List(ctx context.Context) ([]*entities.Group, error) {
 }
 
 func (r *GroupRepository) Update(ctx context.Context, group *entities.Group) error {
-	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": group.ID}, bson.M{"$set": group})
+	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": group.ID}, bson.M{"$set": bson.M{
+		"name":    group.Name,
+		"members": group.Members,
+	}})
 	return err
 }
 
 func (r *GroupRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
 	return err
 }
 
 func (r *GroupRepository) AddUserToGroup(ctx context.Context, groupID, userID string) error {
-	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": groupID}, bson.M{"$addToSet": bson.M{"members": userID}})
+	groupObjectID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		return err
+	}
+	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": groupObjectID}, bson.M{"$addToSet": bson.M{"members": userID}})
 	return err
 }
 
 func (r *GroupRepository) RemoveUserFromGroup(ctx context.Context, groupID, userID string) error {
-	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": groupID}, bson.M{"$pull": bson.M{"members": userID}})
+	groupObjectID, err := bson.ObjectIDFromHex(groupID)
+	if err != nil {
+		return err
+	}
+	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": groupObjectID}, bson.M{"$pull": bson.M{"members": userID}})
 	return err
 }

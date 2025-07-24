@@ -15,10 +15,10 @@ func NewGetUserUseCase(repo repositories.IUserRepository) *GetUserUseCase {
 	return &GetUserUseCase{repo: repo}
 }
 
-func (uc *GetUserUseCase) Execute(ctx context.Context, id string) (*dto.UserDTO, error) {
+func (uc *GetUserUseCase) Execute(ctx context.Context, id string) (*dto.UserResponseDTO, error) {
 	user, err := uc.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return mappers.ToUserDTO(user), nil
+	return mappers.ToUserResponseDTO(user), nil
 }

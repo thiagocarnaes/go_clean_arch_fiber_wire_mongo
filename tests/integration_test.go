@@ -11,7 +11,6 @@ import (
 	"time"
 	"user-management/internal/application/usecases/group"
 	"user-management/internal/application/usecases/user"
-	"user-management/internal/config"
 	"user-management/internal/infrastructure/database"
 	"user-management/internal/infrastructure/logger"
 	irepos "user-management/internal/infrastructure/repositories"
@@ -23,32 +22,30 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-const (
-	testDBName   = "user_management_test"
-	testMongoURI = "mongodb://localhost:27017"
-	testPort     = ":3001"
-)
-
 type IntegrationTestSuite struct {
 	suite.Suite
 	server      *web.Server
 	client      *http.Client
 	baseURL     string
 	mongoClient *mongo.Client
+	testConfig  *TestConfig
 }
 
 func (suite *IntegrationTestSuite) SetupSuite() {
+	ctx := context.Background()
+
+	// Configurar teste com Testcontainers
+	testConfig, err := SetupTestContainer(ctx)
+	suite.NoError(err)
+	suite.testConfig = testConfig
+
 	// Configurar cliente MongoDB para limpeza
-	client, err := mongo.Connect(options.Client().ApplyURI(testMongoURI))
+	client, err := mongo.Connect(options.Client().ApplyURI(testConfig.MongoURI))
 	suite.NoError(err)
 	suite.mongoClient = client
 
 	// Configurar aplicação
-	cfg := &config.Config{
-		MongoURI: testMongoURI,
-		MongoDB:  testDBName,
-		Port:     testPort,
-	}
+	cfg := testConfig.ToAppConfig()
 
 	// Inicializar dependências
 	loggerInstance := logger.NewLogger()
@@ -81,27 +78,48 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.server = web.NewServer(cfg, userController, groupController, loggerInstance, mongodb)
 
 	suite.client = &http.Client{Timeout: 10 * time.Second}
-	suite.baseURL = fmt.Sprintf("http://localhost%s", testPort)
+	suite.baseURL = fmt.Sprintf("http://localhost%s", testConfig.Port)
 
 	// Iniciar servidor em goroutine
+	errChan := make(chan error)
 	go func() {
-		suite.server.Start()
+		err := suite.server.Start()
+		errChan <- err
 	}()
 
-	// Aguardar servidor inicializar
-	time.Sleep(2 * time.Second)
+	// Aguardar servidor inicializar e verificar se está respondendo
+	ready := false
+	for i := 0; i < 10; i++ {
+		resp, err := http.Get(fmt.Sprintf("%s/health", suite.baseURL))
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				ready = true
+				break
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	suite.True(ready, "Server did not start within timeout")
 }
 
 func (suite *IntegrationTestSuite) TearDownSuite() {
+	ctx := context.Background()
+
 	if suite.mongoClient != nil {
-		suite.mongoClient.Disconnect(context.Background())
+		suite.mongoClient.Disconnect(ctx)
+	}
+
+	// Stop test container
+	if suite.testConfig != nil {
+		suite.testConfig.StopMongoContainer(ctx)
 	}
 }
 
 func (suite *IntegrationTestSuite) SetupTest() {
 	// Limpar banco de dados antes de cada teste
 	ctx := context.Background()
-	suite.mongoClient.Database(testDBName).Drop(ctx)
+	suite.mongoClient.Database(suite.testConfig.MongoDB).Drop(ctx)
 }
 
 func (suite *IntegrationTestSuite) makeRequest(method, path string, body interface{}) (*http.Response, []byte) {

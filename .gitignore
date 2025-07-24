@@ -66,3 +66,4 @@ temp/
 
 # MongoDB data (if running locally)
 data/
+.scannerwork

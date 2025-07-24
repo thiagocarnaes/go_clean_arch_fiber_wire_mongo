@@ -18,13 +18,19 @@ func NewUserRepository(db *database.MongoDB) repositories.IUserRepository {
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {
+	user.ID = bson.NewObjectID()
 	_, err := r.collection.InsertOne(ctx, user)
 	return err
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*entities.User, error) {
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
 	var user entities.User
-	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +50,18 @@ func (r *UserRepository) List(ctx context.Context) ([]*entities.User, error) {
 }
 
 func (r *UserRepository) Update(ctx context.Context, user *entities.User) error {
-	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": user.ID}, bson.M{"$set": user})
+	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": user.ID}, bson.M{"$set": bson.M{
+		"name":  user.Name,
+		"email": user.Email,
+	}})
 	return err
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
 	return err
 }

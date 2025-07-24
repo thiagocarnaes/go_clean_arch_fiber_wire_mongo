@@ -1,7 +1,9 @@
 package entities
 
+import "go.mongodb.org/mongo-driver/v2/bson"
+
 type Group struct {
-	ID      string   `bson:"_id"`
-	Name    string   `bson:"name"`
-	Members []string `bson:"members"`
+	ID      bson.ObjectID `bson:"_id,omitempty"`
+	Name    string        `bson:"name"`
+	Members []string      `bson:"members"`
 }

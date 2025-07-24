@@ -15,10 +15,10 @@ func NewGetGroupUseCase(repo repositories.IGroupRepository) *GetGroupUseCase {
 	return &GetGroupUseCase{repo: repo}
 }
 
-func (uc *GetGroupUseCase) Execute(ctx context.Context, id string) (*dto.GroupDTO, error) {
+func (uc *GetGroupUseCase) Execute(ctx context.Context, id string) (*dto.GroupResponseDTO, error) {
 	group, err := uc.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return mappers.ToGroupDTO(group), nil
+	return mappers.ToGroupResponseDTO(group), nil
 }

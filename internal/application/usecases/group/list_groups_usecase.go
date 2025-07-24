@@ -15,14 +15,14 @@ func NewListGroupsUseCase(repo repositories.IGroupRepository) *ListGroupsUseCase
 	return &ListGroupsUseCase{repo: repo}
 }
 
-func (gc *ListGroupsUseCase) Execute(ctx context.Context) ([]*dto.GroupDTO, error) {
+func (gc *ListGroupsUseCase) Execute(ctx context.Context) ([]*dto.GroupResponseDTO, error) {
 	groups, err := gc.repo.List(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var groupDTOs []*dto.GroupDTO
+	var groupDTOs []*dto.GroupResponseDTO
 	for _, group := range groups {
-		groupDTOs = append(groupDTOs, mappers.ToGroupDTO(group))
+		groupDTOs = append(groupDTOs, mappers.ToGroupResponseDTO(group))
 	}
 	return groupDTOs, nil
 }

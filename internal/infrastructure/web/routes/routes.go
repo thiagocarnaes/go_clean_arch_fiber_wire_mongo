@@ -9,6 +9,10 @@ import (
 )
 
 func SetupRoutes(app *fiber.App, UserController *controllers.UserController, GroupController *controllers.GroupController) {
+	// Health check endpoint
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 
 	app.Use(logger.New(logger.Config{
 		Format:     `{"timestamp":"${time}","status":${status},"method":"${method}","path":"${path}","latency":"${latency}"}` + "\n",
