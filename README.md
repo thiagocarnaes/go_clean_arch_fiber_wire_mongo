@@ -11,12 +11,11 @@ Uma implementação de Clean Architecture usando Go, Fiber, Wire e MongoDB para 
 - [Características](#-características)
 - [Arquitetura](#-arquitetura)
 - [Tecnologias](#-tecnologias)
-- [Instalação](#-instalação)
-- [Uso](#-uso)
-- [API Endpoints](#-api-endpoints)
+- [Como Executar](#-como-executar)
+- [Logs e Monitoramento](#-logs-e-monitoramento)
 - [Testes](#-testes)
+- [API Endpoints](#-api-endpoints)
 - [Desenvolvimento](#-desenvolvimento)
-- [Docker](#-docker)
 - [Contribuição](#-contribuição)
 - [Licença](#-licença)
 
@@ -77,87 +76,257 @@ HTTP Response ← Controller ← Use Case ← Repository ← Database
 - **[Air](https://github.com/air-verse/air)** - Hot reload
 - **[Docker](https://www.docker.com/)** - Containerização
 
-## 🔧 Instalação
+## � Como Executar
 
 ### Pré-requisitos
 
 - Go 1.24+
-- MongoDB 7.0+
+- MongoDB 7.0+ (rodando localmente)
 - Make (opcional, mas recomendado)
-- Docker e Docker Compose (opcional)
 
-### Setup Rápido
+### Configuração
 
+1. **Clone o repositório:**
 ```bash
-# Clone o repositório
 git clone https://github.com/thiagocarnaes/go_clean_arch_fiber_wire_mongo.git
 cd go_clean_arch_fiber_wire_mongo
-
-# Setup completo do ambiente de desenvolvimento
-make setup
-
-# Copie e configure o arquivo de ambiente
-cp .env.example .env
-# Edite o .env com suas configurações
-
-# Inicie o MongoDB (via Docker)
-make mongo-start
-
-# Execute a aplicação
-make run
 ```
 
-### Instalação Manual
-
+2. **Configure as variáveis de ambiente:**
 ```bash
-# Instale as dependências
-go mod download
-
-# Instale as ferramentas necessárias
-go install github.com/google/wire/cmd/wire@latest
-go install github.com/air-verse/air@latest
-
-# Gere as dependências do Wire
-cd cmd && wire && cd ..
-
-# Execute a aplicação
-go run .
+# O arquivo .env já está configurado com valores padrão
+# Edite se necessário para seu ambiente
+cat .env
 ```
 
-## 🚀 Uso
-
-### Variáveis de Ambiente
-
-Crie um arquivo `.env` baseado no `.env.example`:
-
+Arquivo `.env` padrão:
 ```env
 # MongoDB Configuration
 MONGO_URI=mongodb://localhost:27017
 MONGO_DB=user_management
+PORT=:3000
 
-# Server Configuration  
-PORT=:8080
+# Datadog Configuration
+DD_SOURCE=go
+DD_SERVICE=user-management
+DD_TAGS=env:dev,app:fiber
+```
 
-# Test Configuration (opcional)
-TEST_MONGO_URI=mongodb://localhost:27017
-TEST_MONGO_DB=user_management_test
-TEST_PORT=:3001
+3. **Instale as dependências:**
+```bash
+go mod download
 ```
 
 ### Executando a Aplicação
 
+#### Opção 1: Execução Direta (Recomendado)
 ```bash
-# Desenvolvimento (com hot reload)
-make dev
-
-# Produção
-make run
-
-# Via Docker Compose
-make up
+# Executar a aplicação (certifique-se que o MongoDB está rodando)
+go run main.go initApiServer
 ```
 
-A API estará disponível em `http://localhost:8080`
+#### Opção 2: Usando Make
+```bash
+# Executar a aplicação via Make
+make run
+
+# Para executar os testes
+make test-integration
+```
+
+#### Opção 3: Usando Docker Compose (Com Datadog Agent)
+```bash
+# 1. Configure as variáveis de ambiente do Datadog
+cp .env.example .env
+# Edite o arquivo .env e adicione sua DD_API_KEY
+
+# 2. Execute todos os serviços
+make docker-up
+
+# 3. Verificar logs da aplicação
+make docker-logs-app
+
+# 4. Parar todos os serviços
+make docker-down
+```
+
+**Serviços incluídos no Docker Compose:**
+- **API**: `http://localhost:8080` - Aplicação principal
+- **MongoDB**: `localhost:27017` - Banco de dados
+- **MongoDB Express**: `http://localhost:8081` - Interface web para MongoDB (admin/admin)
+- **Datadog Agent**: Coleta de métricas, logs e traces
+
+A API estará disponível em `http://localhost:3000` (execução direta) ou `http://localhost:8080` (Docker)
+
+## � Docker e Containerização
+
+### Docker Compose
+
+O projeto inclui um arquivo `docker-compose.yml` completo com todos os serviços necessários:
+
+```yaml
+services:
+  app:                 # Aplicação Go
+  mongodb:            # Banco de dados MongoDB 7.0
+  mongo-express:      # Interface web para MongoDB
+  datadog-agent:      # Agente Datadog para monitoramento
+```
+
+### Comandos Docker Disponíveis
+
+```bash
+# Construir imagem Docker
+make docker-build
+
+# Iniciar todos os serviços
+make docker-up
+
+# Parar todos os serviços  
+make docker-down
+
+# Ver logs de todos os serviços
+make docker-logs
+
+# Ver logs apenas da aplicação
+make docker-logs-app
+
+# Reiniciar todos os serviços
+make docker-restart
+
+# Limpeza completa (containers, volumes, imagens)
+make docker-clean
+```
+
+### Configuração do Datadog
+
+Para usar o monitoramento com Datadog, você precisa:
+
+1. **Obter uma API Key do Datadog:**
+   - Acesse: https://app.datadoghq.com/organization-settings/api-keys
+   - Copie sua API key
+
+2. **Configurar o arquivo .env:**
+```bash
+# Copie o arquivo de exemplo
+cp .env.example .env
+
+# Edite e adicione sua API key
+DD_API_KEY=sua_api_key_aqui
+DD_SITE=datadoghq.com  # ou datadoghq.eu para EU
+```
+
+3. **Iniciar os serviços:**
+```bash
+make docker-up
+```
+
+O agente Datadog coletará automaticamente:
+- **Logs** da aplicação e containers
+- **Métricas** de sistema e aplicação  
+- **Traces** APM (se configurado)
+- **Métricas Docker** dos containers
+
+## �📊 Logs e Monitoramento
+
+A aplicação utiliza **Logrus** para logging estruturado e está configurada para integração com **Datadog**.
+
+### Configuração de Logs
+
+As configurações de log são controladas pelas variáveis de ambiente no arquivo `.env`:
+
+```env
+# Datadog Configuration
+DD_SOURCE=go              # Fonte dos logs
+DD_SERVICE=user-management # Nome do serviço
+DD_TAGS=env:dev,app:fiber # Tags para filtragem
+```
+
+### Exemplo de Logs
+
+```json
+{
+  "timestamp": "2025-07-23T22:31:09.318Z",
+  "level": "info",
+  "message": "Successfully connected to MongoDB",
+  "ddsource": "go",
+  "service": "user-management", 
+  "ddtags": "env:dev,app:fiber",
+  "uri": "mongodb://localhost:27017/"
+}
+```
+
+### Monitoramento com Datadog
+
+Para habilitar o monitoramento com Datadog:
+
+1. Configure as variáveis de ambiente apropriadas
+2. Instale o Datadog Agent
+3. Configure o Agent para coletar logs da aplicação
+
+Os logs estruturados facilitam a análise e debugging da aplicação.
+
+## 🧪 Testes
+
+### Executando os Testes de Integração
+
+Os testes de integração usam **Testcontainers** para criar uma instância isolada do MongoDB automaticamente. **Não é necessário ter o MongoDB instalado ou rodando localmente** - o Testcontainers cuida disso para você.
+
+#### Executar todos os testes:
+```bash
+go test ./tests/ -v
+```
+
+#### Executar com cobertura de código:
+```bash
+make test-integration
+```
+
+> **Nota:** Os testes usam Testcontainers e criam automaticamente uma instância temporária do MongoDB. Certifique-se de ter o Docker rodando em sua máquina.
+
+#### Executar teste específico:
+```bash
+# Executar apenas testes de usuário
+go test ./tests/ -v -run TestIntegrationSuite/TestUserCRUD
+
+# Executar apenas testes de grupo  
+go test ./tests/ -v -run TestIntegrationSuite/TestGroupCRUD
+
+# Executar cenários complexos
+go test ./tests/ -v -run TestIntegrationSuite/TestCompleteUserGroupWorkflow
+```
+
+### Estrutura dos Testes
+
+O projeto possui uma suite completa de testes organizados por funcionalidade:
+
+- **`tests/user_integration_test.go`** - Testes CRUD de usuários
+  - `TestUserCRUD` - Criar, ler, atualizar, deletar usuário
+  - `TestUserNotFound` - Teste de usuário não encontrado
+  - `TestCreateUserInvalidData` - Validação de dados inválidos
+  - `TestListUsersEmpty` - Lista vazia de usuários
+  - `TestMultipleUsers` - Múltiplos usuários
+
+- **`tests/group_integration_test.go`** - Testes CRUD de grupos
+  - `TestGroupCRUD` - Criar, ler, atualizar, deletar grupo
+  - `TestGroupNotFound` - Teste de grupo não encontrado
+  - `TestGroupMemberManagement` - Gerenciamento de membros
+  - `TestAddNonExistentUserToGroup` - Adicionar usuário inexistente
+
+- **`tests/complex_scenarios_test.go`** - Cenários complexos
+  - `TestCompleteUserGroupWorkflow` - Workflow completo
+  - `TestUserDeletionImpactOnGroups` - Impacto da deleção nos grupos
+  - `TestConcurrentOperations` - Operações concorrentes
+  - `TestDataConsistency` - Consistência de dados
+
+### Cobertura de Código
+
+```bash
+# Gerar relatório de cobertura
+make test-integration
+
+# Ver cobertura detalhada
+go tool cover -html=coverage-integration.out
+```
 
 ## 📚 API Endpoints
 
@@ -187,59 +356,57 @@ A API estará disponível em `http://localhost:8080`
 
 #### Criar Usuário
 ```bash
-curl -X POST http://localhost:8080/api/v1/users/ \
+curl -X POST http://localhost:3000/api/v1/users/ \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "user1",
     "name": "João Silva",
     "email": "joao@example.com"
   }'
 ```
 
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1a",
+  "name": "João Silva", 
+  "email": "joao@example.com"
+}
+```
+
 #### Criar Grupo
 ```bash
-curl -X POST http://localhost:8080/api/v1/groups/ \
+curl -X POST http://localhost:3000/api/v1/groups/ \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "developers",
-    "name": "Desenvolvedores",
-    "members": []
+    "name": "Desenvolvedores"
   }'
+```
+
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1b",
+  "name": "Desenvolvedores",
+  "members": []
+}
 ```
 
 #### Adicionar Usuário ao Grupo
 ```bash
-curl -X POST http://localhost:8080/api/v1/groups/developers/members/user1
+# Substitua {groupId} e {userId} pelos IDs reais obtidos nas respostas das APIs
+curl -X POST http://localhost:3000/api/v1/groups/{groupId}/members/{userId}
 ```
 
-## 🧪 Testes
-
-O projeto possui uma suite completa de testes de integração que testa todo o fluxo da aplicação.
-
-### Executar Testes
-
+#### Buscar Usuário
 ```bash
-# Todos os testes
-make test
-
-# Apenas testes de integração (MongoDB deve estar rodando)
-make test-integration
-
-# Testes de integração com MongoDB via Docker
-make test-integration-docker
-
-# Testes com relatório de cobertura
-make test-coverage
+# Substitua {userId} pelo ID real
+curl -X GET http://localhost:3000/api/v1/users/{userId}
 ```
 
-### Estrutura dos Testes
-
-- **`tests/integration_test.go`** - Setup da suite de testes
-- **`tests/user_integration_test.go`** - Testes CRUD de usuários
-- **`tests/group_integration_test.go`** - Testes CRUD de grupos
-- **`tests/complex_scenarios_test.go`** - Cenários complexos e workflows
-
-Para mais detalhes, consulte [tests/README.md](tests/README.md).
+#### Listar Todos os Usuários
+```bash
+curl -X GET http://localhost:3000/api/v1/users/
+```
 
 ## 🔧 Desenvolvimento
 
@@ -282,44 +449,6 @@ make clean
 # Atualizar dependências
 make deps-update
 ```
-
-## 🐳 Docker
-
-### Docker Compose (Recomendado)
-
-```bash
-# Iniciar todos os serviços
-make up
-
-# Ver logs
-make logs
-
-# Parar serviços
-make down
-
-# Rebuild e restart
-make rebuild
-```
-
-O Docker Compose inclui:
-- Aplicação Go
-- MongoDB
-- Mongo Express (interface web para MongoDB)
-
-### Docker Manual
-
-```bash
-# Build da imagem
-make docker-build
-
-# Executar container
-make docker-run
-```
-
-### Acessos
-
-- **API**: http://localhost:8080
-- **Mongo Express**: http://localhost:8081 (admin/admin)
 
 ## 🤝 Contribuição
 

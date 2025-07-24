@@ -25,18 +25,15 @@ func InitializeServer() (*web.Server, error) {
 		return nil, err
 	}
 	logrusLogger := logger.NewLogger()
-	mongoDB, err := database.NewMongoDB(configConfig, logrusLogger)
-	if err != nil {
-		return nil, err
-	}
-	iUserRepository := repositories.NewUserRepository(mongoDB)
+	databaseManager := database.NewDatabaseManager(configConfig, logrusLogger)
+	iUserRepository := repositories.NewUserRepository(databaseManager)
 	createUserUseCase := user.NewCreateUserUseCase(iUserRepository)
 	getUserUseCase := user.NewGetUserUseCase(iUserRepository)
 	updateUserUseCase := user.NewUpdateUserUseCase(iUserRepository)
 	deleteUserUseCase := user.NewDeleteUserUseCase(iUserRepository)
 	listUsersUseCase := user.NewListUsersUseCase(iUserRepository)
-	UserController := controllers.NewUserController(createUserUseCase, getUserUseCase, updateUserUseCase, deleteUserUseCase, listUsersUseCase)
-	iGroupRepository := repositories.NewGroupRepository(mongoDB)
+	userController := controllers.NewUserController(createUserUseCase, getUserUseCase, updateUserUseCase, deleteUserUseCase, listUsersUseCase)
+	iGroupRepository := repositories.NewGroupRepository(databaseManager)
 	createGroupUseCase := group.NewCreateGroupUseCase(iGroupRepository)
 	getGroupUseCase := group.NewGetGroupUseCase(iGroupRepository)
 	updateGroupUseCase := group.NewUpdateGroupUseCase(iGroupRepository)
@@ -44,7 +41,7 @@ func InitializeServer() (*web.Server, error) {
 	listGroupsUseCase := group.NewListGroupsUseCase(iGroupRepository)
 	addUserToGroupUseCase := group.NewAddUserToGroupUseCase(iGroupRepository, iUserRepository)
 	removeUserFromGroupUseCase := group.NewRemoveUserFromGroupUseCase(iGroupRepository)
-	GroupController := controllers.NewGroupController(createGroupUseCase, getGroupUseCase, updateGroupUseCase, deleteGroupUseCase, listGroupsUseCase, addUserToGroupUseCase, removeUserFromGroupUseCase)
-	server := web.NewServer(configConfig, UserController, GroupController, logrusLogger, mongoDB)
+	groupController := controllers.NewGroupController(createGroupUseCase, getGroupUseCase, updateGroupUseCase, deleteGroupUseCase, listGroupsUseCase, addUserToGroupUseCase, removeUserFromGroupUseCase)
+	server := web.NewServer(configConfig, userController, groupController, logrusLogger, databaseManager)
 	return server, nil
 }

@@ -11,11 +11,24 @@ import (
 )
 
 type GroupRepository struct {
+	*BaseRepository
 	collection *mongo.Collection
 }
 
-func NewGroupRepository(db *database.MongoDB) repositories.IGroupRepository {
-	return &GroupRepository{collection: db.DB.Collection("groups")}
+func NewGroupRepository(dbManager *database.DatabaseManager) repositories.IGroupRepository {
+	baseRepo := NewBaseRepository(dbManager)
+
+	// Get MongoDB collection
+	collection, err := baseRepo.GetMongoCollection("groups")
+	if err != nil {
+		// For now, we'll panic. In production, you might want to handle this differently
+		panic("Failed to initialize group repository: " + err.Error())
+	}
+
+	return &GroupRepository{
+		BaseRepository: baseRepo,
+		collection:     collection,
+	}
 }
 
 func (r *GroupRepository) Create(ctx context.Context, group *entities.Group) error {

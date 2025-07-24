@@ -49,11 +49,16 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 
 	// Inicializar dependências
 	loggerInstance := logger.NewLogger()
-	mongodb, err := database.NewMongoDB(cfg, loggerInstance)
+	dbManager := database.NewDatabaseManager(cfg, loggerInstance)
+
+	// Inicializar conexão com o banco
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = dbManager.Initialize(ctx)
 	suite.NoError(err)
 
-	userRepo := irepos.NewUserRepository(mongodb)
-	groupRepo := irepos.NewGroupRepository(mongodb)
+	userRepo := irepos.NewUserRepository(dbManager)
+	groupRepo := irepos.NewGroupRepository(dbManager)
 
 	// Criar casos de uso
 	createUserUseCase := user.NewCreateUserUseCase(userRepo)
@@ -75,7 +80,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	groupController := controllers.NewGroupController(createGroupUseCase, getGroupUseCase, updateGroupUseCase, deleteGroupUseCase, listGroupsUseCase, addUserToGroupUseCase, removeUserFromGroupUseCase)
 
 	// Criar server
-	suite.server = web.NewServer(cfg, userController, groupController, loggerInstance, mongodb)
+	suite.server = web.NewServer(cfg, userController, groupController, loggerInstance, dbManager)
 
 	suite.client = &http.Client{Timeout: 10 * time.Second}
 	suite.baseURL = fmt.Sprintf("http://localhost%s", testConfig.Port)

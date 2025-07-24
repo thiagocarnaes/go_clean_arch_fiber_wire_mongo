@@ -9,8 +9,12 @@ services:
       - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB=user_management
       - PORT=:8080
+      - DD_SOURCE=${DD_SOURCE:-go}
+      - DD_SERVICE=${DD_SERVICE:-user-management}
+      - DD_TAGS=${DD_TAGS:-env:docker,app:fiber}
     depends_on:
       - mongodb
+      - datadog-agent
     networks:
       - app-network
     restart: unless-stopped
@@ -46,6 +50,39 @@ services:
       - ME_CONFIG_BASICAUTH_PASSWORD=admin
     depends_on:
       - mongodb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Datadog Agent for monitoring and logging
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    container_name: datadog-agent
+    environment:
+      # Required: Your Datadog API key
+      - DD_API_KEY=${DD_API_KEY}
+      # Optional: Set the Datadog site (default: datadoghq.com)
+      - DD_SITE=${DD_SITE:-datadoghq.com}
+      # Enable log collection
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      # Enable APM (Application Performance Monitoring)
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      # Enable Docker monitoring
+      - DD_DOCKER_LABELS_AS_TAGS=true
+      - DD_DOCKER_ENV_AS_TAGS=true
+      # Set hostname
+      - DD_HOSTNAME=user-management-docker
+      # Enable process monitoring
+      - DD_PROCESS_AGENT_ENABLED=true
+    volumes:
+      # For Docker monitoring
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+      # For log collection
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     networks:
       - app-network
     restart: unless-stopped

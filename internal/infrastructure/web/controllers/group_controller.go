@@ -34,7 +34,7 @@ func NewGroupController(createGroup *group.CreateGroupUseCase, getGroup *group.G
 
 func (h *GroupController) Create(c *fiber.Ctx) error {
 	var createGroupDTO dto.CreateGroupRequestDTO
-	
+
 	if err := h.validator.ParseAndValidate(c, &createGroupDTO); err != nil {
 		if validationErr, ok := err.(*validators.ValidationError); ok {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})
@@ -60,7 +60,7 @@ func (h *GroupController) Get(c *fiber.Ctx) error {
 
 func (h *GroupController) Update(c *fiber.Ctx) error {
 	var updateGroupDTO dto.CreateGroupRequestDTO
-	
+
 	if err := h.validator.ParseAndValidate(c, &updateGroupDTO); err != nil {
 		if validationErr, ok := err.(*validators.ValidationError); ok {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})

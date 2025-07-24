@@ -2,19 +2,33 @@ package repositories
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"user-management/internal/domain/entities"
 	"user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type UserRepository struct {
+	*BaseRepository
 	collection *mongo.Collection
 }
 
-func NewUserRepository(db *database.MongoDB) repositories.IUserRepository {
-	return &UserRepository{collection: db.DB.Collection("users")}
+func NewUserRepository(dbManager *database.DatabaseManager) repositories.IUserRepository {
+	baseRepo := NewBaseRepository(dbManager)
+
+	// Get MongoDB collection
+	collection, err := baseRepo.GetMongoCollection("users")
+	if err != nil {
+		// For now, we'll panic. In production, you might want to handle this differently
+		panic("Failed to initialize user repository: " + err.Error())
+	}
+
+	return &UserRepository{
+		BaseRepository: baseRepo,
+		collection:     collection,
+	}
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {

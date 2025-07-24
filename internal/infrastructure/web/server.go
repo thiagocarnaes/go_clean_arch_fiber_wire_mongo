@@ -16,24 +16,38 @@ import (
 )
 
 type Server struct {
-	app     *fiber.App
-	cfg     *config.Config
-	log     *logrus.Logger
-	mongoDB *database.MongoDB
+	app       *fiber.App
+	cfg       *config.Config
+	log       *logrus.Logger
+	dbManager *database.DatabaseManager
 }
 
 func NewServer(cfg *config.Config,
 	UserController *controllers.UserController,
 	GroupController *controllers.GroupController,
 	log *logrus.Logger,
-	mongoDB *database.MongoDB) *Server {
+	dbManager *database.DatabaseManager) *Server {
 
 	app := fiber.New()
 	routes.SetupRoutes(app, UserController, GroupController)
-	return &Server{app: app, cfg: cfg, log: log, mongoDB: mongoDB}
+	return &Server{app: app, cfg: cfg, log: log, dbManager: dbManager}
 }
 
 func (s *Server) Start() error {
+	// Initialize database connection
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := s.dbManager.Initialize(ctx); err != nil {
+		s.log.WithFields(logrus.Fields{
+			"ddsource": s.cfg.DDSource,
+			"service":  s.cfg.DDService,
+			"ddtags":   s.cfg.DDTags,
+			"error":    err.Error(),
+		}).Error("Failed to initialize database")
+		return err
+	}
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
@@ -64,8 +78,8 @@ func (s *Server) Start() error {
 	}).Info("Shutdown signal received, initiating graceful shutdown")
 
 	// Criar contexto com timeout para shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
 	// Fechar conexões do Fiber
 	if err := s.app.Shutdown(); err != nil {
@@ -78,21 +92,15 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	// Fechar conexão com MongoDB
-	if s.mongoDB == nil {
-		s.log.WithFields(logrus.Fields{
-			"ddsource": s.cfg.DDSource,
-			"service":  s.cfg.DDService,
-			"ddtags":   s.cfg.DDTags,
-		}).Warn("MongoDB client is nil, skipping disconnect")
-	} else {
-		if err := s.mongoDB.Client.Disconnect(ctx); err != nil {
+	// Fechar conexão com o banco de dados
+	if s.dbManager != nil {
+		if err := s.dbManager.Close(shutdownCtx); err != nil {
 			s.log.WithFields(logrus.Fields{
 				"ddsource": s.cfg.DDSource,
 				"service":  s.cfg.DDService,
 				"ddtags":   s.cfg.DDTags,
 				"error":    err.Error(),
-			}).Error("Failed to disconnect MongoDB client")
+			}).Error("Failed to close database connection")
 			return err
 		}
 	}

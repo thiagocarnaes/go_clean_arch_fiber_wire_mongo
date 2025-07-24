@@ -58,12 +58,13 @@ func NewTestConfig() *TestConfig {
 // ToAppConfig converts TestConfig to application Config
 func (tc *TestConfig) ToAppConfig() *config.Config {
 	return &config.Config{
-		MongoURI:  tc.MongoURI,
-		MongoDB:   tc.MongoDB,
-		Port:      tc.Port,
-		DDSource:  "go",
-		DDService: "user-management",
-		DDTags:    "env:test,app:fiber",
+		MongoURI:     tc.MongoURI,
+		MongoDB:      tc.MongoDB,
+		Port:         tc.Port,
+		DDSource:     "go",
+		DDService:    "user-management",
+		DDTags:       "env:test,app:fiber",
+		DatabaseType: "mongodb",
 	}
 }
 

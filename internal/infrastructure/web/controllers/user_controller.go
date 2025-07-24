@@ -30,7 +30,7 @@ func NewUserController(createUser *user.CreateUserUseCase, getUser *user.GetUser
 
 func (h *UserController) Create(c *fiber.Ctx) error {
 	var createUserDTO dto.CreateUserRequestDTO
-	
+
 	// Parse e valida em uma operação
 	if err := h.validator.ParseAndValidate(c, &createUserDTO); err != nil {
 		if validationErr, ok := err.(*validators.ValidationError); ok {
@@ -57,7 +57,7 @@ func (h *UserController) Get(c *fiber.Ctx) error {
 
 func (h *UserController) Update(c *fiber.Ctx) error {
 	var updateUserDTO dto.CreateUserRequestDTO
-	
+
 	if err := h.validator.ParseAndValidate(c, &updateUserDTO); err != nil {
 		if validationErr, ok := err.(*validators.ValidationError); ok {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})

@@ -64,10 +64,10 @@ func (v *InputValidator) ParseAndValidate(c *fiber.Ctx, s interface{}) error {
 	if err := c.BodyParser(s); err != nil {
 		return &ValidationError{Message: "Invalid JSON format"}
 	}
-	
+
 	if err := v.ValidateStruct(s); err != nil {
 		return &ValidationError{Message: v.FormatValidationError(err)}
 	}
-	
+
 	return nil
 }
