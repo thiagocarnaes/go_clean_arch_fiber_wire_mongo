@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"user-management/internal/domain/entities"
 	"user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
@@ -15,20 +16,19 @@ type GroupRepository struct {
 	collection *mongo.Collection
 }
 
-func NewGroupRepository(dbManager *database.DatabaseManager) repositories.IGroupRepository {
+func NewGroupRepository(dbManager *database.DatabaseManager) (repositories.IGroupRepository, error) {
 	baseRepo := NewBaseRepository(dbManager)
 
 	// Get MongoDB collection
 	collection, err := baseRepo.GetMongoCollection("groups")
 	if err != nil {
-		// For now, we'll panic. In production, you might want to handle this differently
-		panic("Failed to initialize group repository: " + err.Error())
+		return nil, fmt.Errorf("failed to initialize group repository: %w", err)
 	}
 
 	return &GroupRepository{
 		BaseRepository: baseRepo,
 		collection:     collection,
-	}
+	}, nil
 }
 
 func (r *GroupRepository) Create(ctx context.Context, group *entities.Group) error {

@@ -57,8 +57,11 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	err = dbManager.Initialize(ctx)
 	suite.NoError(err)
 
-	userRepo := irepos.NewUserRepository(dbManager)
-	groupRepo := irepos.NewGroupRepository(dbManager)
+	userRepo, err := irepos.NewUserRepository(dbManager)
+	suite.NoError(err)
+
+	groupRepo, err := irepos.NewGroupRepository(dbManager)
+	suite.NoError(err)
 
 	// Criar casos de uso
 	createUserUseCase := user.NewCreateUserUseCase(userRepo)

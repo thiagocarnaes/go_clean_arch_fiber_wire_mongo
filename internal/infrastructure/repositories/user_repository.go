@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"user-management/internal/domain/entities"
 	"user-management/internal/domain/interfaces/repositories"
 	"user-management/internal/infrastructure/database"
@@ -15,20 +16,19 @@ type UserRepository struct {
 	collection *mongo.Collection
 }
 
-func NewUserRepository(dbManager *database.DatabaseManager) repositories.IUserRepository {
+func NewUserRepository(dbManager *database.DatabaseManager) (repositories.IUserRepository, error) {
 	baseRepo := NewBaseRepository(dbManager)
 
 	// Get MongoDB collection
 	collection, err := baseRepo.GetMongoCollection("users")
 	if err != nil {
-		// For now, we'll panic. In production, you might want to handle this differently
-		panic("Failed to initialize user repository: " + err.Error())
+		return nil, fmt.Errorf("failed to initialize user repository: %w", err)
 	}
 
 	return &UserRepository{
 		BaseRepository: baseRepo,
 		collection:     collection,
-	}
+	}, nil
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {

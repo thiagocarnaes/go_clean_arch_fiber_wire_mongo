@@ -26,14 +26,20 @@ func InitializeServer() (*web.Server, error) {
 	}
 	logrusLogger := logger.NewLogger()
 	databaseManager := database.NewDatabaseManager(configConfig, logrusLogger)
-	iUserRepository := repositories.NewUserRepository(databaseManager)
+	iUserRepository, err := repositories.NewUserRepository(databaseManager)
+	if err != nil {
+		return nil, err
+	}
 	createUserUseCase := user.NewCreateUserUseCase(iUserRepository)
 	getUserUseCase := user.NewGetUserUseCase(iUserRepository)
 	updateUserUseCase := user.NewUpdateUserUseCase(iUserRepository)
 	deleteUserUseCase := user.NewDeleteUserUseCase(iUserRepository)
 	listUsersUseCase := user.NewListUsersUseCase(iUserRepository)
 	userController := controllers.NewUserController(createUserUseCase, getUserUseCase, updateUserUseCase, deleteUserUseCase, listUsersUseCase)
-	iGroupRepository := repositories.NewGroupRepository(databaseManager)
+	iGroupRepository, err := repositories.NewGroupRepository(databaseManager)
+	if err != nil {
+		return nil, err
+	}
 	createGroupUseCase := group.NewCreateGroupUseCase(iGroupRepository)
 	getGroupUseCase := group.NewGetGroupUseCase(iGroupRepository)
 	updateGroupUseCase := group.NewUpdateGroupUseCase(iGroupRepository)
