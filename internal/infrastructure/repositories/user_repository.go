@@ -16,6 +16,10 @@ type UserRepository struct {
 }
 
 func NewUserRepository(db *database.MongoDB) (repositories.IUserRepository, error) {
+	// Check if MongoDB database is valid
+	if db == nil || db.DB == nil {
+		return nil, fmt.Errorf("failed to get MongoDB collection for users: database connection is nil")
+	}
 
 	// Get MongoDB collection
 	collection := db.DB.Collection("users")
