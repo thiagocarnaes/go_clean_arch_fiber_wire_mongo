@@ -25,8 +25,11 @@ func InitializeServer() (*web.Server, error) {
 		return nil, err
 	}
 	logrusLogger := logger.NewLogger()
-	databaseManager := database.NewDatabaseManager(configConfig, logrusLogger)
-	iUserRepository, err := repositories.NewUserRepository(databaseManager)
+	mongoDB, err := database.NewMongoDB(configConfig, logrusLogger)
+	if err != nil {
+		return nil, err
+	}
+	iUserRepository, err := repositories.NewUserRepository(mongoDB)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +39,7 @@ func InitializeServer() (*web.Server, error) {
 	deleteUserUseCase := user.NewDeleteUserUseCase(iUserRepository)
 	listUsersUseCase := user.NewListUsersUseCase(iUserRepository)
 	userController := controllers.NewUserController(createUserUseCase, getUserUseCase, updateUserUseCase, deleteUserUseCase, listUsersUseCase)
-	iGroupRepository, err := repositories.NewGroupRepository(databaseManager)
+	iGroupRepository, err := repositories.NewGroupRepository(mongoDB)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +51,6 @@ func InitializeServer() (*web.Server, error) {
 	addUserToGroupUseCase := group.NewAddUserToGroupUseCase(iGroupRepository, iUserRepository)
 	removeUserFromGroupUseCase := group.NewRemoveUserFromGroupUseCase(iGroupRepository)
 	groupController := controllers.NewGroupController(createGroupUseCase, getGroupUseCase, updateGroupUseCase, deleteGroupUseCase, listGroupsUseCase, addUserToGroupUseCase, removeUserFromGroupUseCase)
-	server := web.NewServer(configConfig, userController, groupController, logrusLogger, databaseManager)
+	server := web.NewServer(configConfig, userController, groupController, logrusLogger, mongoDB)
 	return server, nil
 }

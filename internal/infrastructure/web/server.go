@@ -16,37 +16,37 @@ import (
 )
 
 type Server struct {
-	app       *fiber.App
-	cfg       *config.Config
-	log       *logrus.Logger
-	dbManager *database.DatabaseManager
+	app     *fiber.App
+	cfg     *config.Config
+	log     *logrus.Logger
+	mongoDB *database.MongoDB
 }
 
 func NewServer(cfg *config.Config,
 	UserController *controllers.UserController,
 	GroupController *controllers.GroupController,
 	log *logrus.Logger,
-	dbManager *database.DatabaseManager) *Server {
+	mongoDB *database.MongoDB) *Server {
 
 	app := fiber.New()
 	routes.SetupRoutes(app, UserController, GroupController)
-	return &Server{app: app, cfg: cfg, log: log, dbManager: dbManager}
+	return &Server{app: app, cfg: cfg, log: log, mongoDB: mongoDB}
 }
 
 func (s *Server) Start() error {
 	// Initialize database connection
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// defer cancel()
 
-	if err := s.dbManager.Initialize(ctx); err != nil {
-		s.log.WithFields(logrus.Fields{
-			"ddsource": s.cfg.DDSource,
-			"service":  s.cfg.DDService,
-			"ddtags":   s.cfg.DDTags,
-			"error":    err.Error(),
-		}).Error("Failed to initialize database")
-		return err
-	}
+	// if err := s.dbManager.Initialize(ctx); err != nil {
+	// 	s.log.WithFields(logrus.Fields{
+	// 		"ddsource": s.cfg.DDSource,
+	// 		"service":  s.cfg.DDService,
+	// 		"ddtags":   s.cfg.DDTags,
+	// 		"error":    err.Error(),
+	// 	}).Error("Failed to initialize database")
+	// 	return err
+	// }
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -93,8 +93,8 @@ func (s *Server) Start() error {
 	}
 
 	// Fechar conexão com o banco de dados
-	if s.dbManager != nil {
-		if err := s.dbManager.Close(shutdownCtx); err != nil {
+	if s.mongoDB != nil {
+		if err := s.mongoDB.Client.Disconnect(shutdownCtx); err != nil {
 			s.log.WithFields(logrus.Fields{
 				"ddsource": s.cfg.DDSource,
 				"service":  s.cfg.DDService,
@@ -111,8 +111,4 @@ func (s *Server) Start() error {
 		"ddtags":   s.cfg.DDTags,
 	}).Info("Server gracefully shutdown")
 	return nil
-}
-
-func (s *Server) ServerData() *Server {
-	return s
 }

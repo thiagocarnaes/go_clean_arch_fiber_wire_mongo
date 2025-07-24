@@ -49,12 +49,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 
 	// Inicializar dependências
 	loggerInstance := logger.NewLogger()
-	dbManager := database.NewDatabaseManager(cfg, loggerInstance)
-
-	// Inicializar conexão com o banco
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = dbManager.Initialize(ctx)
+	dbManager, err := database.NewMongoDB(cfg, loggerInstance)
 	suite.NoError(err)
 
 	userRepo, err := irepos.NewUserRepository(dbManager)

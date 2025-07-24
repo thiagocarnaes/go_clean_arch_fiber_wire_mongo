@@ -12,22 +12,17 @@ import (
 )
 
 type GroupRepository struct {
-	*BaseRepository
 	collection *mongo.Collection
 }
 
-func NewGroupRepository(dbManager *database.DatabaseManager) (repositories.IGroupRepository, error) {
-	baseRepo := NewBaseRepository(dbManager)
-
+func NewGroupRepository(db *database.MongoDB) (repositories.IGroupRepository, error) {
 	// Get MongoDB collection
-	collection, err := baseRepo.GetMongoCollection("groups")
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize group repository: %w", err)
+	collection := db.DB.Collection("groups")
+	if collection == nil {
+		return nil, fmt.Errorf("failed to get MongoDB collection for groups")
 	}
-
 	return &GroupRepository{
-		BaseRepository: baseRepo,
-		collection:     collection,
+		collection: collection,
 	}, nil
 }
 

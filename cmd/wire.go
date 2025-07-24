@@ -21,7 +21,7 @@ func InitializeServer() (*web.Server, error) {
 	wire.Build(
 		logger.NewLogger,
 		config.NewConfig,
-		database.NewDatabaseManager,
+		database.NewMongoDB,
 		irepos.NewUserRepository,
 		irepos.NewGroupRepository,
 		user.NewCreateUserUseCase,

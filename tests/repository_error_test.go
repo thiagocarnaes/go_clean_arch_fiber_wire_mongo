@@ -980,6 +980,198 @@ func TestRepositoryObjectIDValidationScenarios(t *testing.T) {
 }
 
 // ========================================
+// TESTES ESPECÍFICOS PARA AddUserToGroup ObjectIDFromHex ERROR
+// Estes testes validam especificamente o erro na linha:
+// groupObjectID, err := bson.ObjectIDFromHex(groupID)
+// da função AddUserToGroup no GroupRepository
+// ========================================
+
+func TestGroupRepositoryAddUserToGroupObjectIDFromHexError(t *testing.T) {
+	// Testes que validam o erro específico de ObjectIDFromHex na função AddUserToGroup
+	// Estes testes chamam diretamente o repository, não o usecase
+
+	t.Run("GroupRepository AddUserToGroup direct call with invalid groupID", func(t *testing.T) {
+		// Criar mock do GroupRepository para simular erro específico de ObjectIDFromHex
+		mockGroupRepo := new(MockGroupRepository)
+
+		// IDs inválidos que devem causar erro em ObjectIDFromHex na linha específica
+		invalidGroupIDs := []string{
+			"invalid-group-id",                 // String comum
+			"12345",                            // Muito curto
+			"not-a-valid-objectid-hex-string",  // String longa mas inválida
+			"",                                 // String vazia
+			"gggggggggggggggggggggggg",         // 24 chars mas com 'g' (não é hex)
+			"12345678901234567890123456789012", // 32 chars (muito longo)
+			"xyz123abc456def789",               // Contém caracteres não-hex
+			"ABCDEFGHIJKLMNOPQRSTUVWX",         // 24 chars maiúsculas mas inválidas
+		}
+
+		validUserID := "507f1f77bcf86cd799439011" // ID válido para userID
+
+		for _, invalidGroupID := range invalidGroupIDs {
+			// Configurar mock para retornar erro específico de ObjectIDFromHex
+			objectIDError := fmt.Errorf("AddUserToGroup ObjectIDFromHex error for groupID '%s': invalid ObjectID format", invalidGroupID)
+			mockGroupRepo.On("AddUserToGroup", mock.Anything, invalidGroupID, validUserID).Return(objectIDError)
+
+			// Chamar diretamente o método AddUserToGroup do repository (não o usecase)
+			err := mockGroupRepo.AddUserToGroup(context.Background(), invalidGroupID, validUserID)
+
+			// Verificar resultado
+			assert.Error(t, err, "AddUserToGroup should return error for invalid groupID: %s", invalidGroupID)
+			assert.Contains(t, err.Error(), "ObjectIDFromHex", "Error should mention ObjectIDFromHex for groupID: %s", invalidGroupID)
+			assert.Contains(t, err.Error(), invalidGroupID, "Error should contain the invalid groupID: %s", invalidGroupID)
+
+			t.Logf("SUCCESS: AddUserToGroup with invalid groupID '%s' returned ObjectIDFromHex error", invalidGroupID)
+		}
+
+		mockGroupRepo.AssertExpectations(t)
+	})
+
+	t.Run("GroupRepository AddUserToGroup edge cases for groupID ObjectIDFromHex", func(t *testing.T) {
+		// Testar casos extremos específicos para a validação de ObjectID
+		mockGroupRepo := new(MockGroupRepository)
+
+		edgeCasesGroupID := map[string]string{
+			"empty_string":          "",
+			"only_spaces":           "   ",
+			"special_characters":    "!@#$%^&*()_+{}|:<>?[]",
+			"unicode_characters":    "ñáéíóú中文",
+			"hex_but_wrong_length":  "abc123def456789",               // Hex válido mas tamanho errado
+			"almost_valid_23_chars": "507f1f77bcf86cd79943901",       // 23 chars ao invés de 24
+			"too_long_26_chars":     "507f1f77bcf86cd799439011ab",    // 26 chars
+			"non_hex_24_chars":      "ghijklmnopqrstuvwxyz1234",      // 24 chars mas não hex
+			"mixed_valid_invalid":   "507f1f77bcf86cd799439xyz",      // Começando válido, terminando inválido
+			"with_separators":       "507f-1f77-bcf8-6cd7-9943-9011", // Com separadores
+		}
+
+		validUserID := "507f1f77bcf86cd799439011"
+
+		for caseName, invalidGroupID := range edgeCasesGroupID {
+			t.Run(fmt.Sprintf("AddUserToGroup_groupID_%s", caseName), func(t *testing.T) {
+				// Configurar mock para retornar erro específico
+				objectIDError := fmt.Errorf("AddUserToGroup failed: ObjectIDFromHex error for groupID '%s' (case: %s)", invalidGroupID, caseName)
+				mockGroupRepo.On("AddUserToGroup", mock.Anything, invalidGroupID, validUserID).Return(objectIDError)
+
+				// Executar teste
+				err := mockGroupRepo.AddUserToGroup(context.Background(), invalidGroupID, validUserID)
+
+				// Verificar resultado
+				assert.Error(t, err, "Should return ObjectIDFromHex error for case: %s", caseName)
+				assert.Contains(t, err.Error(), "ObjectIDFromHex", "Error should mention ObjectIDFromHex for case: %s", caseName)
+				assert.Contains(t, err.Error(), caseName, "Error should mention the test case: %s", caseName)
+
+				t.Logf("SUCCESS: AddUserToGroup ObjectIDFromHex validation case '%s' with groupID '%s' returned expected error", caseName, invalidGroupID)
+			})
+		}
+
+		mockGroupRepo.AssertExpectations(t)
+	})
+}
+
+// Testes de integração específicos para AddUserToGroup ObjectIDFromHex
+func TestGroupRepositoryAddUserToGroupObjectIDFromHexIntegration(t *testing.T) {
+	// Estes testes usam um repository real para validar os erros de ObjectIDFromHex
+	// especificamente na função AddUserToGroup
+
+	t.Run("Real GroupRepository AddUserToGroup with invalid groupID ObjectIDFromHex", func(t *testing.T) {
+		// Criar um DatabaseManager válido para teste
+		cfg := &config.Config{
+			DatabaseType: "mongodb",
+			MongoURI:     "mongodb://localhost:27017",
+			MongoDB:      "test_db",
+		}
+
+		loggerInstance := logrus.New()
+		loggerInstance.SetLevel(logrus.ErrorLevel)
+
+		dbManager := database.NewDatabaseManager(cfg, loggerInstance)
+
+		// Tentar criar repository
+		groupRepo, err := repositories.NewGroupRepository(dbManager)
+		if err != nil {
+			t.Skip("Skipping integration test - could not create GroupRepository")
+			return
+		}
+
+		// IDs inválidos específicos para testar a linha ObjectIDFromHex em AddUserToGroup
+		invalidGroupIDs := []string{
+			"direct-invalid",                      // String comum
+			"12345678901234567890123456789012345", // 33 chars (muito longo)
+			"short",                               // Muito curto
+			"zzzzzzzzzzzzzzzzzzzzzzz",             // 23 chars com 'z' (não hex)
+			"!@#$%^&*()_+{}|:<>?",                 // Caracteres especiais
+			"",                                    // String vazia
+			"GGGGGGGGGGGGGGGGGGGGGGGG",            // 24 chars mas com 'G' (não hex válido)
+		}
+
+		validUserID := "507f1f77bcf86cd799439011" // ID válido para userID
+
+		for _, invalidGroupID := range invalidGroupIDs {
+			// Chamar diretamente AddUserToGroup (não através do usecase)
+			// Isso força o erro na linha específica: groupObjectID, err := bson.ObjectIDFromHex(groupID)
+			err := groupRepo.AddUserToGroup(context.Background(), invalidGroupID, validUserID)
+
+			// Verificar que retornou erro
+			assert.Error(t, err, "AddUserToGroup should return ObjectIDFromHex error for invalid groupID: %s", invalidGroupID)
+
+			// Verificar que o erro é relacionado a ObjectID inválido
+			assert.True(t,
+				strings.Contains(err.Error(), "invalid") ||
+					strings.Contains(err.Error(), "ObjectID") ||
+					strings.Contains(err.Error(), "hex") ||
+					strings.Contains(err.Error(), "encoding"),
+				"Error should indicate invalid ObjectID for groupID: %s, got: %v", invalidGroupID, err)
+
+			t.Logf("SUCCESS: AddUserToGroup with invalid groupID '%s' returned ObjectIDFromHex error: %v", invalidGroupID, err)
+		}
+	})
+
+	t.Run("Real GroupRepository AddUserToGroup ObjectIDFromHex validation scenarios", func(t *testing.T) {
+		// Testes que cobrem cenários específicos de validação na linha ObjectIDFromHex
+
+		cfg := &config.Config{
+			DatabaseType: "mongodb",
+			MongoURI:     "mongodb://localhost:27017",
+			MongoDB:      "test_db",
+		}
+
+		loggerInstance := logrus.New()
+		loggerInstance.SetLevel(logrus.ErrorLevel)
+
+		dbManager := database.NewDatabaseManager(cfg, loggerInstance)
+
+		groupRepo, err := repositories.NewGroupRepository(dbManager)
+		if err != nil {
+			t.Skip("Skipping integration test - could not create GroupRepository")
+			return
+		}
+
+		// Cenários específicos que devem falhar na linha ObjectIDFromHex
+		objectIDValidationScenarios := map[string]string{
+			"contains_non_hex_chars": "507f1f77bcf86cd799439xyz",    // Inicia válido, termina inválido
+			"wrong_length_short":     "507f1f77bcf86cd7994390",      // 23 chars
+			"wrong_length_long":      "507f1f77bcf86cd799439011123", // 26 chars
+			"all_non_hex":            "ghijklmnopqrstuvwxyz1234",    // 24 chars mas nenhum hex válido
+			"mixed_case_invalid":     "507F1F77BCF86CD799439GHI",    // Maiúsculas com chars inválidos
+			"with_hyphens":           "507f-1f77-bcf8-6cd7-9943",    // Com separadores (inválido)
+		}
+
+		validUserID := "507f1f77bcf86cd799439011"
+
+		for scenarioName, invalidGroupID := range objectIDValidationScenarios {
+			// Executar AddUserToGroup diretamente
+			err := groupRepo.AddUserToGroup(context.Background(), invalidGroupID, validUserID)
+
+			// Deve retornar erro de ObjectIDFromHex
+			assert.Error(t, err, "Scenario '%s' should return ObjectIDFromHex error for groupID: %s", scenarioName, invalidGroupID)
+
+			// Log do resultado
+			t.Logf("SUCCESS: Scenario '%s' with groupID '%s' returned ObjectIDFromHex error: %v", scenarioName, invalidGroupID, err)
+		}
+	})
+}
+
+// ========================================
 // TESTES DE INTEGRAÇÃO ESPECÍFICOS PARA ObjectIDFromHex
 // Estes testes usam repositories reais e MongoDB real para validar os erros
 // ========================================

@@ -12,22 +12,19 @@ import (
 )
 
 type UserRepository struct {
-	*BaseRepository
 	collection *mongo.Collection
 }
 
-func NewUserRepository(dbManager *database.DatabaseManager) (repositories.IUserRepository, error) {
-	baseRepo := NewBaseRepository(dbManager)
+func NewUserRepository(db *database.MongoDB) (repositories.IUserRepository, error) {
 
 	// Get MongoDB collection
-	collection, err := baseRepo.GetMongoCollection("users")
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize user repository: %w", err)
+	collection := db.DB.Collection("users")
+	if collection == nil {
+		return nil, fmt.Errorf("failed to get MongoDB collection for users")
 	}
 
 	return &UserRepository{
-		BaseRepository: baseRepo,
-		collection:     collection,
+		collection: collection,
 	}, nil
 }
 
