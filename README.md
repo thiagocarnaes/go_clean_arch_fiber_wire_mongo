@@ -267,6 +267,103 @@ Os logs estruturados facilitam a análise e debugging da aplicação.
 
 ## 🧪 Testes
 
+### GitHub Actions - CI/CD Pipeline
+
+O projeto possui uma pipeline completa de CI/CD configurada no GitHub Actions que executa automaticamente nos seguintes eventos:
+
+- **Push** para branches `main` e `develop`
+- **Pull Requests** para `main` e `develop`
+
+#### Steps da Pipeline de Testes
+
+```yaml
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout do código
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup do Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      # 3. Cache das dependências Go
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # 4. Download das dependências
+      - name: Install dependencies
+        run: go mod download
+
+      # 5. Instalação do Wire
+      - name: Install Wire
+        run: go install github.com/google/wire/cmd/wire@latest
+
+      # 6. Geração do código Wire
+      - name: Generate Wire dependencies
+        run: |
+          cd cmd
+          wire
+
+      # 7. Testes unitários
+      - name: Run unit tests
+        run: go test -v ./internal/...
+
+      # 8. Testes de integração com Testcontainers
+      - name: Run integration tests
+        run: go test -v ./tests/...
+
+      # 9. Geração de relatório de cobertura
+      - name: Generate test coverage
+        run: |
+          go test -coverprofile=coverage.out -covermode=atomic ./internal/... ./tests/...
+          go tool cover -html=coverage.out -o coverage.html
+
+      # 10. Upload para Codecov
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+```
+
+#### Jobs Executados
+
+1. **🧪 Test Job**: Executa testes unitários e de integração
+2. **🔍 Lint Job**: Executa golangci-lint para qualidade do código
+3. **🏗️ Build Job**: Compila a aplicação e gera artefatos
+4. **🐳 Docker Job**: Constrói imagem Docker (apenas na branch main)
+
+#### Configurações Importantes
+
+- **Testcontainers**: Usa Testcontainers para criar instâncias temporárias do MongoDB
+- **Cache Otimizado**: Cache das dependências Go para builds mais rápidos
+- **Wire Auto-generation**: Gera código Wire automaticamente
+- **Coverage Reports**: Upload automático para Codecov
+- **Docker Disponível**: Requer Docker para executar Testcontainers
+
 ### Executando os Testes de Integração
 
 Os testes de integração usam **Testcontainers** para criar uma instância isolada do MongoDB automaticamente. **Não é necessário ter o MongoDB instalado ou rodando localmente** - o Testcontainers cuida disso para você.
@@ -327,6 +424,30 @@ make test-integration
 # Ver cobertura detalhada
 go tool cover -html=coverage-integration.out
 ```
+
+### Monitorando Testes no GitHub Actions
+
+#### Status Badges
+O README inclui badges que mostram o status atual dos testes:
+
+[![Tests](https://github.com/thiagocarnaes/go_clean_arch_fiber_wire_mongo/actions/workflows/tests.yml/badge.svg)](https://github.com/thiagocarnaes/go_clean_arch_fiber_wire_mongo/actions/workflows/tests.yml)
+
+#### Visualizando Resultados
+1. **Acesse a aba Actions** no repositório GitHub
+2. **Clique no workflow "Tests"** para ver execuções recentes
+3. **Clique em uma execução específica** para ver detalhes dos jobs
+4. **Expand os steps** para ver logs detalhados de cada etapa
+
+#### Artefatos Gerados
+- **Coverage Reports**: Relatórios de cobertura em HTML
+- **Build Binaries**: Executáveis compilados
+- **Test Results**: Resultados detalhados dos testes
+
+#### Notificações
+O GitHub enviará notificações por email em caso de:
+- ❌ Falhas nos testes
+- ✅ Sucesso após correção de falhas
+- 🔄 Status de builds em PRs
 
 ## 📚 API Endpoints
 
