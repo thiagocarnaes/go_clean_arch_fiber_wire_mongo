@@ -325,21 +325,17 @@ jobs:
           cd cmd
           wire
 
-      # 7. Testes unitários
-      - name: Run unit tests
-        run: go test -v ./internal/...
-
-      # 8. Testes de integração com Testcontainers
+      # 7. Testes de integração com Testcontainers
       - name: Run integration tests
         run: go test -v ./tests/...
 
-      # 9. Geração de relatório de cobertura
+      # 8. Geração de relatório de cobertura
       - name: Generate test coverage
         run: |
           go test -coverprofile=coverage.out -covermode=atomic ./internal/... ./tests/...
           go tool cover -html=coverage.out -o coverage.html
 
-      # 10. Upload para Codecov
+      # 9. Upload para Codecov
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
@@ -352,9 +348,8 @@ jobs:
 #### Jobs Executados
 
 1. **🧪 Test Job**: Executa testes unitários e de integração
-2. **🔍 Lint Job**: Executa golangci-lint para qualidade do código
-3. **🏗️ Build Job**: Compila a aplicação e gera artefatos
-4. **🐳 Docker Job**: Constrói imagem Docker (apenas na branch main)
+2. **🏗️ Build Job**: Compila a aplicação e gera artefatos
+3. **🐳 Docker Job**: Constrói imagem Docker (apenas na branch main)
 
 #### Configurações Importantes
 
