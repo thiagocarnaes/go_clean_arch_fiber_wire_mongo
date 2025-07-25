@@ -26,15 +26,17 @@ func ToUserListResponseDTO(users []*entities.User, total int64, page int64, perP
 
 func ToUserResponseDTO(user *entities.User) *dto.UserResponseDTO {
 	return &dto.UserResponseDTO{
-		ID:    user.ID.Hex(),
-		Name:  user.Name,
-		Email: user.Email,
+		ID:       user.ID.Hex(),
+		Name:     user.Name,
+		Email:    user.Email,
+		IsActive: user.IsActive,
 	}
 }
 
 func ToUserEntityFromRequest(dto *dto.CreateUserRequestDTO) *entities.User {
 	return &entities.User{
-		Name:  dto.Name,
-		Email: dto.Email,
+		Name:     dto.Name,
+		Email:    dto.Email,
+		IsActive: dto.IsActive,
 	}
 }

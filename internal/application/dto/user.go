@@ -1,8 +1,9 @@
 package dto
 
 type CreateUserRequestDTO struct {
-	Name  string `json:"name" validate:"required,min=2,max=100"`
-	Email string `json:"email" validate:"required,email"`
+	Name     string `json:"name" validate:"required,min=2,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	IsActive bool   `json:"is_active"`
 }
 
 type ListUserQueryParam struct {
@@ -17,7 +18,8 @@ type UserListResponseDTO struct {
 }
 
 type UserResponseDTO struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	IsActive bool   `json:"is_active"`
 }

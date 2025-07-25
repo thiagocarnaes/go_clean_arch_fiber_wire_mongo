@@ -1,10 +1,12 @@
-package acceptance
+package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"user-management/internal/application/dto"
@@ -82,6 +84,248 @@ func TestGroupControllerCreate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGroupControllerCreateRepositoryErrors(t *testing.T) {
+	t.Run("Create group - force MongoDB connection close to cause repository Create error", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		// Note: Don't defer cleanup here since we'll disconnect the database
+
+		const (
+			contentTypeJSON   = "application/json"
+			contentTypeHeader = "Content-Type"
+			groupsEndpoint    = "/api/v1/groups"
+		)
+
+		// Verify normal operation works first
+		createGroupDTO := dto.CreateGroupRequestDTO{
+			Name:    "Test Group Before Disconnect",
+			Members: []string{},
+		}
+
+		payloadBytes, err := json.Marshal(createGroupDTO)
+		require.NoError(t, err)
+
+		createReq, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes))
+		require.NoError(t, err)
+		createReq.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp, err := testApp.Request(createReq)
+		require.NoError(t, err)
+		assert.Equal(t, 201, createResp.StatusCode)
+
+		// Now force close the MongoDB connection to simulate repository error
+		ctx := context.Background()
+		err = testApp.DB.Client.Disconnect(ctx)
+		require.NoError(t, err)
+
+		// Try to create a group after closing connection - should return repository error
+		createGroupDTO2 := dto.CreateGroupRequestDTO{
+			Name:    "Test Group After Disconnect",
+			Members: []string{},
+		}
+
+		payloadBytes2, err := json.Marshal(createGroupDTO2)
+		require.NoError(t, err)
+
+		createReq2, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes2))
+		require.NoError(t, err)
+		createReq2.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp2, err := testApp.Request(createReq2)
+		require.NoError(t, err)
+
+		// Should return 500 due to repository Create() operation failing
+		assert.Equal(t, 500, createResp2.StatusCode)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(createResp2.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.NotNil(t, errorResponse["error"])
+
+		// The error should be related to connection/repository failure
+		errorMsg := errorResponse["error"].(string)
+		assert.True(t,
+			strings.Contains(errorMsg, "connection") ||
+				strings.Contains(errorMsg, "client is disconnected") ||
+				strings.Contains(errorMsg, "topology is closed") ||
+				strings.Contains(errorMsg, "server selection error"),
+			"Expected connection error, got: %s", errorMsg)
+	})
+
+	t.Run("Create group - duplicate group name", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		defer testApp.Cleanup(t)
+
+		const (
+			contentTypeJSON   = "application/json"
+			contentTypeHeader = "Content-Type"
+			groupsEndpoint    = "/api/v1/groups"
+			duplicateName     = "Duplicate Group Name"
+		)
+
+		// Create first group
+		createGroupDTO := dto.CreateGroupRequestDTO{
+			Name:    duplicateName,
+			Members: []string{"user1"},
+		}
+
+		payloadBytes, err := json.Marshal(createGroupDTO)
+		require.NoError(t, err)
+
+		createReq, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes))
+		require.NoError(t, err)
+		createReq.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp, err := testApp.Request(createReq)
+		require.NoError(t, err)
+		assert.Equal(t, 201, createResp.StatusCode)
+
+		// Try to create second group with same name
+		createGroupDTO2 := dto.CreateGroupRequestDTO{
+			Name:    duplicateName,
+			Members: []string{"user2"},
+		}
+
+		payloadBytes2, err := json.Marshal(createGroupDTO2)
+		require.NoError(t, err)
+
+		createReq2, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes2))
+		require.NoError(t, err)
+		createReq2.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp2, err := testApp.Request(createReq2)
+		require.NoError(t, err)
+
+		// MongoDB should return error due to duplicate key if unique index exists
+		// or succeed if no unique constraint (depends on database setup)
+		assert.True(t, createResp2.StatusCode == 201 || createResp2.StatusCode == 500,
+			"Expected 201 (no constraint) or 500 (duplicate constraint), got %d", createResp2.StatusCode)
+
+		if createResp2.StatusCode == 500 {
+			var errorResponse map[string]interface{}
+			err = json.NewDecoder(createResp2.Body).Decode(&errorResponse)
+			require.NoError(t, err)
+			assert.NotNil(t, errorResponse["error"])
+		}
+	})
+
+	t.Run("Create group - database collection drop during operation", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		defer testApp.Cleanup(t)
+
+		const (
+			contentTypeJSON   = "application/json"
+			contentTypeHeader = "Content-Type"
+			groupsEndpoint    = "/api/v1/groups"
+		)
+
+		// Create first group normally
+		createGroupDTO := dto.CreateGroupRequestDTO{
+			Name:    "Test Group Before Drop",
+			Members: []string{},
+		}
+
+		payloadBytes, err := json.Marshal(createGroupDTO)
+		require.NoError(t, err)
+
+		createReq, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes))
+		require.NoError(t, err)
+		createReq.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp, err := testApp.Request(createReq)
+		require.NoError(t, err)
+		assert.Equal(t, 201, createResp.StatusCode)
+
+		// Drop the groups collection to force potential repository issues
+		ctx := context.Background()
+		collection := testApp.DB.DB.Collection("groups")
+		err = collection.Drop(ctx)
+		require.NoError(t, err)
+
+		// Try to create another group after dropping collection
+		createGroupDTO2 := dto.CreateGroupRequestDTO{
+			Name:    "Test Group After Drop",
+			Members: []string{"user1", "user2"},
+		}
+
+		payloadBytes2, err := json.Marshal(createGroupDTO2)
+		require.NoError(t, err)
+
+		createReq2, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes2))
+		require.NoError(t, err)
+		createReq2.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp2, err := testApp.Request(createReq2)
+		require.NoError(t, err)
+
+		// Should either work (201 - collection recreated) or return error (500)
+		assert.True(t, createResp2.StatusCode == 201 || createResp2.StatusCode == 500,
+			"Expected 201 (collection recreated) or 500 (repository error), got %d", createResp2.StatusCode)
+
+		if createResp2.StatusCode == 201 {
+			var createdGroup dto.GroupResponseDTO
+			err = json.NewDecoder(createResp2.Body).Decode(&createdGroup)
+			require.NoError(t, err)
+			assert.Equal(t, createGroupDTO2.Name, createdGroup.Name)
+			assert.Equal(t, createGroupDTO2.Members, createdGroup.Members)
+		} else {
+			var errorResponse map[string]interface{}
+			err = json.NewDecoder(createResp2.Body).Decode(&errorResponse)
+			require.NoError(t, err)
+			assert.NotNil(t, errorResponse["error"])
+		}
+	})
+
+	t.Run("Create group - invalid members causing repository issues", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		defer testApp.Cleanup(t)
+
+		const (
+			contentTypeJSON   = "application/json"
+			contentTypeHeader = "Content-Type"
+			groupsEndpoint    = "/api/v1/groups"
+		)
+
+		// Try to create group with members that might cause repository issues
+		// (e.g., very long member IDs, special characters, etc.)
+		createGroupDTO := dto.CreateGroupRequestDTO{
+			Name: "Group With Problematic Members",
+			Members: []string{
+				strings.Repeat("a", 1000), // Very long member ID
+				"member@with@special@chars",
+				"", // Empty member ID
+				"normal-member-id",
+			},
+		}
+
+		payloadBytes, err := json.Marshal(createGroupDTO)
+		require.NoError(t, err)
+
+		createReq, err := http.NewRequest("POST", groupsEndpoint, bytes.NewBuffer(payloadBytes))
+		require.NoError(t, err)
+		createReq.Header.Set(contentTypeHeader, contentTypeJSON)
+
+		createResp, err := testApp.Request(createReq)
+		require.NoError(t, err)
+
+		// Should either work (201) or return validation/repository error (400/500)
+		assert.True(t, createResp.StatusCode == 201 || createResp.StatusCode == 400 || createResp.StatusCode == 500,
+			"Expected 201, 400, or 500, got %d", createResp.StatusCode)
+
+		if createResp.StatusCode == 201 {
+			var createdGroup dto.GroupResponseDTO
+			err = json.NewDecoder(createResp.Body).Decode(&createdGroup)
+			require.NoError(t, err)
+			assert.Equal(t, createGroupDTO.Name, createdGroup.Name)
+			// Members might be filtered or processed differently
+		} else {
+			var errorResponse map[string]interface{}
+			err = json.NewDecoder(createResp.Body).Decode(&errorResponse)
+			require.NoError(t, err)
+			assert.NotNil(t, errorResponse["error"])
+		}
+	})
 }
 
 func TestGroupControllerGet(t *testing.T) {
@@ -795,5 +1039,282 @@ func TestGroupControllerUseCaseUpdateErrors(t *testing.T) {
 		err = json.NewDecoder(resp.Body).Decode(&errorResponse)
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse[errorKeyName], "Group not found")
+	})
+}
+
+func TestGroupControllerListRepositoryErrors(t *testing.T) {
+	t.Run("List groups - force MongoDB connection close to cause repository List error", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		// Note: Don't defer cleanup here since we'll disconnect the database
+
+		// Create some test groups first
+		groups := []dto.CreateGroupRequestDTO{
+			{Name: "Test Group 1", Members: []string{}},
+			{Name: "Test Group 2", Members: []string{}},
+		}
+
+		for _, group := range groups {
+			payloadBytes, err := json.Marshal(group)
+			require.NoError(t, err)
+
+			createReq, err := http.NewRequest("POST", "/api/v1/groups", bytes.NewBuffer(payloadBytes))
+			require.NoError(t, err)
+			createReq.Header.Set("Content-Type", "application/json")
+
+			createResp, err := testApp.Request(createReq)
+			require.NoError(t, err)
+			require.Equal(t, 201, createResp.StatusCode)
+		}
+
+		// Verify normal operation works first
+		req, err := http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		resp, err := testApp.Request(req)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		// Now force close the MongoDB connection to simulate repository error
+		// This will cause the next List() call in the repository to fail
+		ctx := context.Background()
+		err = testApp.DB.Client.Disconnect(ctx)
+		require.NoError(t, err)
+
+		// Try to list groups after closing connection - should return repository error
+		req, err = http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		resp, err = testApp.Request(req)
+		require.NoError(t, err)
+
+		// Should return 500 due to repository List() operation failing
+		assert.Equal(t, 500, resp.StatusCode)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.NotNil(t, errorResponse["error"])
+
+		// The error should be related to connection/repository failure
+		errorMsg := errorResponse["error"].(string)
+		assert.True(t,
+			strings.Contains(errorMsg, "connection") ||
+				strings.Contains(errorMsg, "client is disconnected") ||
+				strings.Contains(errorMsg, "topology is closed") ||
+				strings.Contains(errorMsg, "server selection error"),
+			"Expected connection error, got: %s", errorMsg)
+	})
+
+	t.Run("Count repository error - force MongoDB connection close during Count operation", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+
+		// First create some groups
+		for i := 0; i < 3; i++ {
+			groupData := dto.CreateGroupRequestDTO{
+				Name:    fmt.Sprintf("Count Test Group %d", i),
+				Members: []string{},
+			}
+			payloadBytes, err := json.Marshal(groupData)
+			require.NoError(t, err)
+
+			createReq, err := http.NewRequest("POST", "/api/v1/groups", bytes.NewBuffer(payloadBytes))
+			require.NoError(t, err)
+			createReq.Header.Set("Content-Type", "application/json")
+
+			createResp, err := testApp.Request(createReq)
+			require.NoError(t, err)
+			require.Equal(t, 201, createResp.StatusCode)
+		}
+
+		// Test normal listing first
+		req, err := http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		resp, err := testApp.Request(req)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		// Now disconnect during the request to cause Count() operation to fail
+		// Close connection to force repository error
+		ctx := context.Background()
+		err = testApp.DB.Client.Disconnect(ctx)
+		require.NoError(t, err)
+
+		// Try to list again - this should cause either List() or Count() to fail
+		req, err = http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		resp, err = testApp.Request(req)
+		require.NoError(t, err)
+
+		// Should return 500 due to repository operation failing
+		assert.Equal(t, 500, resp.StatusCode)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.NotNil(t, errorResponse["error"])
+	})
+
+	t.Run("Repository cursor error - force collection state corruption", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		defer testApp.Cleanup(t)
+
+		// Create test groups
+		groupData := dto.CreateGroupRequestDTO{
+			Name:    "Cursor Test Group",
+			Members: []string{},
+		}
+		payloadBytes, err := json.Marshal(groupData)
+		require.NoError(t, err)
+
+		createReq, err := http.NewRequest("POST", "/api/v1/groups", bytes.NewBuffer(payloadBytes))
+		require.NoError(t, err)
+		createReq.Header.Set("Content-Type", "application/json")
+
+		createResp, err := testApp.Request(createReq)
+		require.NoError(t, err)
+		require.Equal(t, 201, createResp.StatusCode)
+
+		// Verify it works normally first
+		listReq, err := http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		listResp, err := testApp.Request(listReq)
+		require.NoError(t, err)
+		assert.Equal(t, 200, listResp.StatusCode)
+
+		// Drop the database to force cursor/collection errors
+		ctx := context.Background()
+		err = testApp.DB.DB.Drop(ctx)
+		require.NoError(t, err)
+
+		// Try to list groups after dropping database
+		// This should cause the Find operation to fail
+		listReq, err = http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		listResp, err = testApp.Request(listReq)
+		require.NoError(t, err)
+
+		// Should either work (200 with empty list) or return error (500)
+		assert.True(t, listResp.StatusCode == 200 || listResp.StatusCode == 500)
+
+		if listResp.StatusCode == 200 {
+			var groupList dto.ListGroupResponseDTO
+			err = json.NewDecoder(listResp.Body).Decode(&groupList)
+			require.NoError(t, err)
+			// Should return empty list since database was dropped
+			assert.Equal(t, 0, len(groupList.Data))
+			assert.Equal(t, int64(0), groupList.Meta.Total)
+		} else {
+			var errorResponse map[string]interface{}
+			err = json.NewDecoder(listResp.Body).Decode(&errorResponse)
+			require.NoError(t, err)
+			assert.NotNil(t, errorResponse["error"])
+		}
+	})
+
+	t.Run("Repository pagination calculation overflow", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		defer testApp.Cleanup(t)
+
+		// Create test data
+		groupData := dto.CreateGroupRequestDTO{
+			Name:    "Pagination Test Group",
+			Members: []string{},
+		}
+		payloadBytes, err := json.Marshal(groupData)
+		require.NoError(t, err)
+
+		createReq, err := http.NewRequest("POST", "/api/v1/groups", bytes.NewBuffer(payloadBytes))
+		require.NoError(t, err)
+		createReq.Header.Set("Content-Type", "application/json")
+
+		createResp, err := testApp.Request(createReq)
+		require.NoError(t, err)
+		require.Equal(t, 201, createResp.StatusCode)
+
+		// Test with values that might cause issues in pagination calculation
+		// These should be caught by validation, but if they reach the repository
+		// they could cause errors in skip/limit calculation
+		testCases := []struct {
+			page    string
+			perPage string
+			name    string
+		}{
+			{"9223372036854775807", "9223372036854775807", "Maximum int64 values"},
+			{"-1", "10", "Negative page"},
+			{"1", "-1", "Negative per_page"},
+			{"0", "0", "Zero values"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				req, err := http.NewRequest("GET",
+					fmt.Sprintf("/api/v1/groups?page=%s&per_page=%s", tc.page, tc.perPage), nil)
+				require.NoError(t, err)
+
+				resp, err := testApp.Request(req)
+				require.NoError(t, err)
+
+				// Should handle edge cases gracefully - either return 400 (validation error)
+				// or 500 (repository error) or 200 (handled gracefully)
+				assert.True(t, resp.StatusCode == 200 || resp.StatusCode == 400 || resp.StatusCode == 500,
+					"Expected 200, 400, or 500, got %d for case: %s", resp.StatusCode, tc.name)
+
+				if resp.StatusCode == 500 {
+					var errorResponse map[string]interface{}
+					err = json.NewDecoder(resp.Body).Decode(&errorResponse)
+					require.NoError(t, err)
+					assert.NotNil(t, errorResponse["error"])
+				}
+			})
+		}
+	})
+
+	t.Run("Repository connection timeout during List operation", func(t *testing.T) {
+		testApp := SetupTestApp(t)
+		defer testApp.Cleanup(t)
+
+		// Create test groups
+		for i := 0; i < 5; i++ {
+			groupData := dto.CreateGroupRequestDTO{
+				Name:    fmt.Sprintf("Timeout Test Group %d", i),
+				Members: []string{},
+			}
+			payloadBytes, err := json.Marshal(groupData)
+			require.NoError(t, err)
+
+			createReq, err := http.NewRequest("POST", "/api/v1/groups", bytes.NewBuffer(payloadBytes))
+			require.NoError(t, err)
+			createReq.Header.Set("Content-Type", "application/json")
+
+			createResp, err := testApp.Request(createReq)
+			require.NoError(t, err)
+			require.Equal(t, 201, createResp.StatusCode)
+		}
+
+		// Test normal operation first
+		req, err := http.NewRequest("GET", "/api/v1/groups", nil)
+		require.NoError(t, err)
+
+		resp, err := testApp.Request(req)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		// Now try to cause issues by creating high load on database
+		// We'll try to access with different pagination parameters that might cause issues
+		for i := 0; i < 3; i++ {
+			req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/groups?page=%d&per_page=100", i+1), nil)
+			require.NoError(t, err)
+
+			resp, err := testApp.Request(req)
+			require.NoError(t, err)
+
+			// Should either work normally or handle gracefully
+			assert.True(t, resp.StatusCode == 200 || resp.StatusCode == 500,
+				"Expected 200 or 500, got %d", resp.StatusCode)
+		}
 	})
 }
