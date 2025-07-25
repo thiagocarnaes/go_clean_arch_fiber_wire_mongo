@@ -6,6 +6,11 @@ import (
 	"user-management/internal/infrastructure/web/validators"
 
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+const (
+	groupNotFoundError = "Group not found"
 )
 
 type GroupController struct {
@@ -53,7 +58,7 @@ func (h *GroupController) Get(c *fiber.Ctx) error {
 	id := c.Params("id")
 	groupDTO, err := h.getGroupUseCase.Execute(c.Context(), id)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Group not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": groupNotFoundError})
 	}
 	return c.JSON(groupDTO)
 }
@@ -71,6 +76,9 @@ func (h *GroupController) Update(c *fiber.Ctx) error {
 	groupID := c.Params("id")
 	responseDTO, err := h.updateGroupUseCase.Execute(c.Context(), groupID, &updateGroupDTO)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": groupNotFoundError})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(responseDTO)
@@ -79,13 +87,24 @@ func (h *GroupController) Update(c *fiber.Ctx) error {
 func (h *GroupController) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := h.deleteGroupUseCase.Execute(c.Context(), id); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": groupNotFoundError})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *GroupController) List(c *fiber.Ctx) error {
-	groups, err := h.listGroupsUseCase.Execute(c.Context())
+	var input dto.ListGroupQueryParam
+	if err := h.validator.ParseQueryAndValidate(c, &input); err != nil {
+		if validationErr, ok := err.(*validators.ValidationError); ok {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
+	}
+
+	groups, err := h.listGroupsUseCase.Execute(c.Context(), &input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

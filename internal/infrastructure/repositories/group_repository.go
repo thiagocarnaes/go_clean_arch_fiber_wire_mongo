@@ -12,6 +12,7 @@ import (
 )
 
 type GroupRepository struct {
+	*BaseRepository
 	collection *mongo.Collection
 }
 
@@ -22,7 +23,8 @@ func NewGroupRepository(db *database.MongoDB) (repositories.IGroupRepository, er
 		return nil, fmt.Errorf("failed to get MongoDB collection for groups")
 	}
 	return &GroupRepository{
-		collection: collection,
+		BaseRepository: NewBaseRepository(collection),
+		collection:     collection,
 	}, nil
 }
 
@@ -46,11 +48,13 @@ func (r *GroupRepository) GetByID(ctx context.Context, id string) (*entities.Gro
 	return &group, nil
 }
 
-func (r *GroupRepository) List(ctx context.Context) ([]*entities.Group, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{})
+func (r *GroupRepository) List(ctx context.Context, offset int64, limit int64) ([]*entities.Group, error) {
+	cursor, err := r.FindWithPagination(ctx, bson.M{}, offset, limit)
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx) // IMPORTANTE: fecha o cursor para liberar recursos
+
 	var groups []*entities.Group
 	if err := cursor.All(ctx, &groups); err != nil {
 		return nil, err
@@ -67,12 +71,7 @@ func (r *GroupRepository) Update(ctx context.Context, group *entities.Group) err
 }
 
 func (r *GroupRepository) Delete(ctx context.Context, id string) error {
-	objectID, err := bson.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
-	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
-	return err
+	return r.DeleteByID(ctx, id)
 }
 
 func (r *GroupRepository) AddUserToGroup(ctx context.Context, groupID, userID string) error {

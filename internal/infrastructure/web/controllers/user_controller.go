@@ -6,6 +6,11 @@ import (
 	"user-management/internal/infrastructure/web/validators"
 
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+const (
+	userNotFoundError = "User not found"
 )
 
 type UserController struct {
@@ -50,7 +55,7 @@ func (h *UserController) Get(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userDTO, err := h.getUserUseCase.Execute(c.Context(), id)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": userNotFoundError})
 	}
 	return c.JSON(userDTO)
 }
@@ -68,6 +73,9 @@ func (h *UserController) Update(c *fiber.Ctx) error {
 	userID := c.Params("id")
 	responseDTO, err := h.updateUserUseCase.Execute(c.Context(), userID, &updateUserDTO)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": userNotFoundError})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(responseDTO)
@@ -76,13 +84,24 @@ func (h *UserController) Update(c *fiber.Ctx) error {
 func (h *UserController) Delete(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if err := h.deleteUserUseCase.Execute(c.Context(), id); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": userNotFoundError})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *UserController) List(c *fiber.Ctx) error {
-	users, err := h.listUsersUseCase.Execute(c.Context())
+	var input dto.ListUserQueryParam
+	if err := h.validator.ParseQueryAndValidate(c, &input); err != nil {
+		if validationErr, ok := err.(*validators.ValidationError); ok {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Message})
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
+	}
+
+	users, err := h.listUsersUseCase.Execute(c.Context(), &input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

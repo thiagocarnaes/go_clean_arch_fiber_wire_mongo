@@ -11,7 +11,14 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
+const (
+	// CollectionNameUsers é o nome da coleção de usuários no MongoDB
+	mongoRegex   = "$regex"
+	mongoOptions = "$options"
+)
+
 type UserRepository struct {
+	*BaseRepository
 	collection *mongo.Collection
 }
 
@@ -28,7 +35,8 @@ func NewUserRepository(db *database.MongoDB) (repositories.IUserRepository, erro
 	}
 
 	return &UserRepository{
-		collection: collection,
+		BaseRepository: NewBaseRepository(collection),
+		collection:     collection,
 	}, nil
 }
 
@@ -52,16 +60,52 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*entities.User
 	return &user, nil
 }
 
-func (r *UserRepository) List(ctx context.Context) ([]*entities.User, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{})
+func (r *UserRepository) List(ctx context.Context, offset int64, limit int64) ([]*entities.User, error) {
+	cursor, err := r.FindWithPagination(ctx, bson.M{}, offset, limit)
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx) // IMPORTANTE: fecha o cursor para liberar recursos
+
 	var users []*entities.User
 	if err := cursor.All(ctx, &users); err != nil {
 		return nil, err
 	}
 	return users, nil
+}
+
+func (r *UserRepository) Search(ctx context.Context, searchTerm string, offset int64, limit int64) ([]*entities.User, error) {
+	// Cria filtro de busca usando regex para buscar no nome e email
+	filter := bson.M{
+		"$or": []bson.M{
+			{"name": bson.M{mongoRegex: searchTerm, mongoOptions: "i"}},
+			{"email": bson.M{mongoRegex: searchTerm, mongoOptions: "i"}},
+		},
+	}
+
+	cursor, err := r.FindWithPagination(ctx, filter, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []*entities.User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (r *UserRepository) CountSearch(ctx context.Context, searchTerm string) (int64, error) {
+	// Cria filtro de busca usando regex para buscar no nome e email
+	filter := bson.M{
+		"$or": []bson.M{
+			{"name": bson.M{mongoRegex: searchTerm, mongoOptions: "i"}},
+			{"email": bson.M{mongoRegex: searchTerm, mongoOptions: "i"}},
+		},
+	}
+
+	return r.CountWithFilter(ctx, filter)
 }
 
 func (r *UserRepository) Update(ctx context.Context, user *entities.User) error {
@@ -73,10 +117,5 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
-	objectID, err := bson.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
-	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
-	return err
+	return r.DeleteByID(ctx, id)
 }

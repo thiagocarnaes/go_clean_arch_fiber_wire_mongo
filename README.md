@@ -471,7 +471,9 @@ O GitHub enviará notificações por email em caso de:
 
 ### Exemplos de Uso
 
-#### Criar Usuário
+#### 👤 Operações de Usuários
+
+##### Criar Usuário
 ```bash
 curl -X POST http://localhost:3000/api/v1/users/ \
   -H "Content-Type: application/json" \
@@ -490,7 +492,109 @@ curl -X POST http://localhost:3000/api/v1/users/ \
 }
 ```
 
-#### Criar Grupo
+##### Buscar Usuário por ID
+```bash
+curl -X GET http://localhost:3000/api/v1/users/60d5ec49eb1d2c001f5e4b1a
+```
+
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1a",
+  "name": "João Silva",
+  "email": "joao@example.com"
+}
+```
+
+##### Atualizar Usuário
+```bash
+curl -X PUT http://localhost:3000/api/v1/users/60d5ec49eb1d2c001f5e4b1a \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "João Santos",
+    "email": "joao.santos@example.com"
+  }'
+```
+
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1a",
+  "name": "João Santos",
+  "email": "joao.santos@example.com"
+}
+```
+
+##### Excluir Usuário
+```bash
+curl -X DELETE http://localhost:3000/api/v1/users/60d5ec49eb1d2c001f5e4b1a
+```
+
+**Resposta:** Status 204 (No Content)
+
+##### Listar Todos os Usuários
+```bash
+curl -X GET http://localhost:3000/api/v1/users/
+```
+
+**Resposta:**
+```json
+{
+  "users": [
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1a",
+      "name": "João Silva",
+      "email": "joao@example.com"
+    },
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1b",
+      "name": "Maria Santos",
+      "email": "maria@example.com"
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "per_page": 10,
+    "page": 1,
+    "total_pages": 1
+  }
+}
+```
+
+##### Listar Usuários com Paginação
+```bash
+# Página 2, 5 usuários por página
+curl -X GET "http://localhost:3000/api/v1/users/?page=2&limit=5"
+```
+
+##### Buscar Usuários por Nome/Email
+```bash
+# Buscar usuários que contenham "joão" no nome ou email
+curl -X GET "http://localhost:3000/api/v1/users/?search=joão"
+```
+
+**Resposta:**
+```json
+{
+  "users": [
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1a",
+      "name": "João Silva",
+      "email": "joao@example.com"
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "per_page": 10,
+    "page": 1,
+    "total_pages": 1
+  }
+}
+```
+
+#### 👥 Operações de Grupos
+
+##### Criar Grupo
 ```bash
 curl -X POST http://localhost:3000/api/v1/groups/ \
   -H "Content-Type: application/json" \
@@ -502,28 +606,187 @@ curl -X POST http://localhost:3000/api/v1/groups/ \
 **Resposta:**
 ```json
 {
-  "id": "60d5ec49eb1d2c001f5e4b1b",
+  "id": "60d5ec49eb1d2c001f5e4b1c",
   "name": "Desenvolvedores",
   "members": []
 }
 ```
 
-#### Adicionar Usuário ao Grupo
+##### Buscar Grupo por ID
 ```bash
-# Substitua {groupId} e {userId} pelos IDs reais obtidos nas respostas das APIs
-curl -X POST http://localhost:3000/api/v1/groups/{groupId}/members/{userId}
+curl -X GET http://localhost:3000/api/v1/groups/60d5ec49eb1d2c001f5e4b1c
 ```
 
-#### Buscar Usuário
-```bash
-# Substitua {userId} pelo ID real
-curl -X GET http://localhost:3000/api/v1/users/{userId}
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1c",
+  "name": "Desenvolvedores",
+  "members": [
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1a",
+      "name": "João Silva",
+      "email": "joao@example.com"
+    }
+  ]
+}
 ```
 
-#### Listar Todos os Usuários
+##### Atualizar Grupo
 ```bash
-curl -X GET http://localhost:3000/api/v1/users/
+curl -X PUT http://localhost:3000/api/v1/groups/60d5ec49eb1d2c001f5e4b1c \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Desenvolvedores Senior"
+  }'
 ```
+
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1c",
+  "name": "Desenvolvedores Senior",
+  "members": []
+}
+```
+
+##### Excluir Grupo
+```bash
+curl -X DELETE http://localhost:3000/api/v1/groups/60d5ec49eb1d2c001f5e4b1c
+```
+
+**Resposta:** Status 204 (No Content)
+
+##### Listar Todos os Grupos
+```bash
+curl -X GET http://localhost:3000/api/v1/groups/
+```
+
+**Resposta:**
+```json
+{
+  "groups": [
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1c",
+      "name": "Desenvolvedores",
+      "members": []
+    },
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1d",
+      "name": "Designers",
+      "members": []
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "per_page": 10,
+    "page": 1,
+    "total_pages": 1
+  }
+}
+```
+
+##### Listar Grupos com Paginação
+```bash
+# Página 2, 5 grupos por página
+curl -X GET "http://localhost:3000/api/v1/groups/?page=2&limit=5"
+```
+
+#### 🔗 Gerenciamento de Membros de Grupos
+
+##### Adicionar Usuário ao Grupo
+```bash
+curl -X POST http://localhost:3000/api/v1/groups/60d5ec49eb1d2c001f5e4b1c/members/60d5ec49eb1d2c001f5e4b1a
+```
+
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1c",
+  "name": "Desenvolvedores",
+  "members": [
+    {
+      "id": "60d5ec49eb1d2c001f5e4b1a",
+      "name": "João Silva",
+      "email": "joao@example.com"
+    }
+  ]
+}
+```
+
+##### Remover Usuário do Grupo
+```bash
+curl -X DELETE http://localhost:3000/api/v1/groups/60d5ec49eb1d2c001f5e4b1c/members/60d5ec49eb1d2c001f5e4b1a
+```
+
+**Resposta:**
+```json
+{
+  "id": "60d5ec49eb1d2c001f5e4b1c",
+  "name": "Desenvolvedores",
+  "members": []
+}
+```
+
+#### 🚫 Exemplos de Respostas de Erro
+
+##### Usuário Não Encontrado
+```bash
+curl -X GET http://localhost:3000/api/v1/users/invalid-id
+```
+
+**Resposta:** Status 404
+```json
+{
+  "error": "User not found"
+}
+```
+
+##### Dados Inválidos
+```bash
+curl -X POST http://localhost:3000/api/v1/users/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "",
+    "email": "invalid-email"
+  }'
+```
+
+**Resposta:** Status 400
+```json
+{
+  "error": "Validation failed",
+  "details": [
+    "Name is required",
+    "Email must be a valid email address"
+  ]
+}
+```
+
+##### Grupo Não Encontrado
+```bash
+curl -X GET http://localhost:3000/api/v1/groups/invalid-id
+```
+
+**Resposta:** Status 404
+```json
+{
+  "error": "Group not found"
+}
+```
+
+#### 📝 Notas Importantes
+
+- **Base URL**: Use `http://localhost:8080` se estiver executando via Docker
+- **Content-Type**: Sempre inclua `Content-Type: application/json` para requests POST/PUT
+- **IDs**: Substitua os IDs de exemplo pelos IDs reais retornados pelas APIs
+- **Paginação**: Por padrão, a API retorna 10 itens por página (máximo 100)
+- **Busca**: O parâmetro `search` funciona para nome e email de usuários (case-insensitive)
+- **Metadados**: As respostas de listagem incluem um objeto `meta` com informações de paginação:
+  - `total`: Total de registros encontrados
+  - `per_page`: Número de itens por página
+  - `page`: Página atual
+  - `total_pages`: Total de páginas disponíveis
 
 ## 🔧 Desenvolvimento
 

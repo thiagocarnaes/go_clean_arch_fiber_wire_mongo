@@ -58,10 +58,14 @@ test: ## Run all tests
 	go test -v -race ./...
 
 .PHONY: test-integration
-test-integration: ## Run integration tests with coverage
-	@echo "$(BLUE)Running integration tests with coverage...$(RESET)"
-	go test -v -race -coverprofile=coverage-integration.out --coverpkg=./... ./tests/...
-	go tool cover -func=coverage-integration.out
+test-all: ## Run integration tests with coverage
+	@echo "Executando testes com coverage..."
+	@go test -v -coverprofile=coverage-unit.out --coverpkg=./... ./tests/units/...
+	@go test -v -coverprofile=coverage-acceptance.out --coverpkg=./... --coverpkg=./...  ./tests/acceptance/...
+	@echo "mode: atomic" > coverage.out
+	@tail -n +2 coverage-unit.out >> coverage.out
+	@tail -n +2 coverage-acceptance.out >> coverage.out
+	go tool cover -func=coverage.out
 
 .PHONY: test-coverage
 test-coverage: ## Generate test coverage report

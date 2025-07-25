@@ -5,6 +5,17 @@ type CreateUserRequestDTO struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
+type ListUserQueryParam struct {
+	Page    int64  `query:"page" default:"1" validate:"min=0"`
+	PerPage int64  `query:"per_page" default:"10" validate:"min=1,max=100"`
+	Search  string `query:"search" validate:"max=100"`
+}
+
+type UserListResponseDTO struct {
+	Data []UserResponseDTO `json:"users"`
+	Meta Meta              `json:"meta"`
+}
+
 type UserResponseDTO struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
