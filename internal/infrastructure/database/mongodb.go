@@ -50,6 +50,8 @@ func NewMongoDB(cfg *config.Config, log *logrus.Logger) (*MongoDB, error) {
 		"uri":      cfg.MongoURI,
 	}).Info("Successfully connected to MongoDB")
 
+	log.Info("Tests")
+
 	db := client.Database(cfg.MongoDB)
 	return &MongoDB{Client: client, DB: db}, nil
 }
